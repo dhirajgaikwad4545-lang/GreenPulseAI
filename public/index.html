@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>GreenPulse AI | Green Energy Management</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+          rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<div class="app">
+
+    <!-- SIDEBAR -->
+
+    <aside class="sidebar">
+
+        <div class="logo">
+            <div class="logo-icon">⚡</div>
+
+            <div>
+                <h2>GreenPulse</h2>
+                <span>AI ENERGY SYSTEM</span>
+            </div>
+        </div>
+
+        <nav>
+
+            <a href="#dashboard" class="nav-item active">
+                <span>▦</span>
+                Dashboard
+            </a>
+
+            <a href="#analytics" class="nav-item">
+                <span>◈</span>
+                Analytics
+            </a>
+
+            <a href="#faults" class="nav-item">
+                <span>⚠</span>
+                Fault Detection
+            </a>
+
+            <a href="#history" class="nav-item">
+                <span>◷</span>
+                History
+            </a>
+
+        </nav>
+
+        <div class="sidebar-bottom">
+
+            <div class="system-status">
+                <span class="status-dot"></span>
+
+                <div>
+                    <strong>System Online</strong>
+                    <small>Supabase Connected</small>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                GreenPulse AI v1.0
+            </div>
+
+        </div>
+
+    </aside>
+
+
+    <!-- MAIN -->
+
+    <main class="main">
+
+        <!-- HEADER -->
+
+        <header class="topbar">
+
+            <div>
+                <p class="eyebrow">AI-POWERED ENERGY MONITORING</p>
+
+                <h1>Green Energy Dashboard</h1>
+
+                <p class="subtitle">
+                    Real-time solar energy monitoring, fault detection and intelligent analytics.
+                </p>
+            </div>
+
+            <div class="topbar-right">
+
+                <div class="live-indicator">
+                    <span></span>
+                    LIVE
+                </div>
+
+                <div class="last-update">
+                    Last update:
+                    <strong id="lastUpdate">--</strong>
+                </div>
+
+            </div>
+
+        </header>
+
+
+        <!-- DASHBOARD -->
+
+        <section id="dashboard">
+
+
+            <!-- SYSTEM OVERVIEW -->
+
+            <div class="section-title">
+
+                <div>
+                    <h2>System Overview</h2>
+                    <p>Current solar energy parameters</p>
+                </div>
+
+                <div id="connectionStatus" class="connection online">
+                    ● API Connected
+                </div>
+
+            </div>
+
+
+            <!-- CARDS -->
+
+            <div class="cards">
+
+
+                <!-- VOLTAGE -->
+
+                <div class="card metric-card">
+
+                    <div class="card-top">
+
+                        <div class="metric-icon voltage">
+                            ⚡
+                        </div>
+
+                        <span class="metric-label">
+                            VOLTAGE
+                        </span>
+
+                    </div>
+
+                    <div class="metric-value">
+
+                        <span id="voltage">--</span>
+
+                        <small>V</small>
+
+                    </div>
+
+                    <div class="metric-footer">
+
+                        <span>Solar PV voltage</span>
+
+                        <span class="live-tag">LIVE</span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- CURRENT -->
+
+                <div class="card metric-card">
+
+                    <div class="card-top">
+
+                        <div class="metric-icon current">
+                            ≋
+                        </div>
+
+                        <span class="metric-label">
+                            CURRENT
+                        </span>
+
+                    </div>
+
+                    <div class="metric-value">
+
+                        <span id="current">--</span>
+
+                        <small>A</small>
+
+                    </div>
+
+                    <div class="metric-footer">
+
+                        <span>Solar PV current</span>
+
+                        <span class="live-tag">LIVE</span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- POWER -->
+
+                <div class="card metric-card power-card">
+
+                    <div class="card-top">
+
+                        <div class="metric-icon power">
+                            ◉
+                        </div>
+
+                        <span class="metric-label">
+                            POWER
+                        </span>
+
+                    </div>
+
+                    <div class="metric-value">
+
+                        <span id="power">--</span>
+
+                        <small>W</small>
+
+                    </div>
+
+                    <div class="metric-footer">
+
+                        <span>Generated power</span>
+
+                        <span class="live-tag">LIVE</span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- TEMPERATURE -->
+
+                <div class="card metric-card">
+
+                    <div class="card-top">
+
+                        <div class="metric-icon temperature">
+                            🌡
+                        </div>
+
+                        <span class="metric-label">
+                            TEMPERATURE
+                        </span>
+
+                    </div>
+
+                    <div class="metric-value">
+
+                        <span id="temperature">--</span>
+
+                        <small>°C</small>
+
+                    </div>
+
+                    <div class="metric-footer">
+
+                        <span>Ambient temperature</span>
+
+                        <span class="live-tag">LIVE</span>
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+
+            <!-- STATUS ROW -->
+
+            <div class="status-grid">
+
+
+                <!-- SYSTEM STATUS -->
+
+                <div class="card status-card">
+
+                    <div class="card-heading">
+
+                        <div>
+
+                            <span class="label">
+                                SYSTEM STATUS
+                            </span>
+
+                            <h3 id="status">
+                                --
+                            </h3>
+
+                        </div>
+
+                        <div id="statusIcon"
+                             class="big-status-icon">
+                            ✓
+                        </div>
+
+                    </div>
+
+                    <p id="fault">
+                        Waiting for sensor data...
+                    </p>
+
+                </div>
+
+
+                <!-- AI STATUS -->
+
+                <div class="card ai-card">
+
+                    <div class="ai-header">
+
+                        <div class="ai-symbol">
+                            🤖
+                        </div>
+
+                        <div>
+
+                            <span class="label">
+                                ARTIFICIAL INTELLIGENCE
+                            </span>
+
+                            <h3>
+                                AI Fault Analysis
+                            </h3>
+
+                        </div>
+
+                        <div class="ai-online">
+                            ONLINE
+                        </div>
+
+                    </div>
+
+                    <div class="ai-content">
+
+                        <div class="confidence">
+
+                            <span>AI Confidence</span>
+
+                            <strong>
+                                <span id="confidence">--</span>%
+                            </strong>
+
+                        </div>
+
+                        <div class="progress">
+
+                            <div id="confidenceBar"
+                                 class="progress-fill">
+                            </div>
+
+                        </div>
+
+                        <p>
+                            AI system is continuously evaluating
+                            voltage, current, temperature and power.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+
+            <!-- ANALYTICS -->
+
+            <section id="analytics">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>Energy Analytics</h2>
+
+                        <p>
+                            Real-time electrical parameter trends
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="charts-grid">
+
+
+                    <!-- POWER -->
+
+                    <div class="card chart-card large">
+
+                        <div class="chart-header">
+
+                            <div>
+
+                                <span class="label">
+                                    POWER GENERATION
+                                </span>
+
+                                <h3>
+                                    Solar Power
+                                </h3>
+
+                            </div>
+
+                            <span class="chart-unit">
+                                W
+                            </span>
+
+                        </div>
+
+                        <div class="chart-container">
+                            <canvas id="powerChart"></canvas>
+                        </div>
+
+                    </div>
+
+
+                    <!-- VOLTAGE -->
+
+                    <div class="card chart-card">
+
+                        <div class="chart-header">
+
+                            <div>
+
+                                <span class="label">
+                                    VOLTAGE
+                                </span>
+
+                                <h3>
+                                    Voltage Trend
+                                </h3>
+
+                            </div>
+
+                            <span class="chart-unit">
+                                V
+                            </span>
+
+                        </div>
+
+                        <div class="chart-container">
+                            <canvas id="voltageChart"></canvas>
+                        </div>
+
+                    </div>
+
+
+                    <!-- CURRENT -->
+
+                    <div class="card chart-card">
+
+                        <div class="chart-header">
+
+                            <div>
+
+                                <span class="label">
+                                    CURRENT
+                                </span>
+
+                                <h3>
+                                    Current Trend
+                                </h3>
+
+                            </div>
+
+                            <span class="chart-unit">
+                                A
+                            </span>
+
+                        </div>
+
+                        <div class="chart-container">
+                            <canvas id="currentChart"></canvas>
+                        </div>
+
+                    </div>
+
+
+                    <!-- TEMPERATURE -->
+
+                    <div class="card chart-card">
+
+                        <div class="chart-header">
+
+                            <div>
+
+                                <span class="label">
+                                    TEMPERATURE
+                                </span>
+
+                                <h3>
+                                    Temperature Trend
+                                </h3>
+
+                            </div>
+
+                            <span class="chart-unit">
+                                °C
+                            </span>
+
+                        </div>
+
+                        <div class="chart-container">
+                            <canvas id="temperatureChart"></canvas>
+                        </div>
+
+                    </div>
+
+
+                </div>
+
+            </section>
+
+
+            <!-- FAULT DETECTION -->
+
+            <section id="faults">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>Fault Detection</h2>
+
+                        <p>
+                            AI-assisted system condition monitoring
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="fault-panel card">
+
+                    <div class="fault-main">
+
+                        <div id="faultIndicator"
+                             class="fault-indicator normal">
+
+                            ✓
+
+                        </div>
+
+                        <div>
+
+                            <span class="label">
+                                CURRENT CONDITION
+                            </span>
+
+                            <h3 id="faultTitle">
+                                System Normal
+                            </h3>
+
+                            <p id="faultDescription">
+                                No abnormal operating condition detected.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="fault-values">
+
+                        <div>
+
+                            <span>Voltage</span>
+                            <strong id="faultVoltage">-- V</strong>
+
+                        </div>
+
+                        <div>
+
+                            <span>Current</span>
+                            <strong id="faultCurrent">-- A</strong>
+
+                        </div>
+
+                        <div>
+
+                            <span>Temperature</span>
+                            <strong id="faultTemperature">-- °C</strong>
+
+                        </div>
+
+                        <div>
+
+                            <span>Power</span>
+                            <strong id="faultPower">-- W</strong>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- HISTORY -->
+
+            <section id="history">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>Historical Data</h2>
+
+                        <p>
+                            Latest records stored in Supabase PostgreSQL
+                        </p>
+
+                    </div>
+
+                    <button id="refreshHistory"
+                            class="refresh-btn">
+                        ↻ Refresh
+                    </button>
+
+                </div>
+
+
+                <div class="card table-card">
+
+                    <div class="table-wrapper">
+
+                        <table>
+
+                            <thead>
+
+                            <tr>
+
+                                <th>ID</th>
+                                <th>Time</th>
+                                <th>Voltage</th>
+                                <th>Current</th>
+                                <th>Power</th>
+                                <th>Temperature</th>
+                                <th>Status</th>
+                                <th>Fault</th>
+
+                            </tr>
+
+                            </thead>
+
+                            <tbody id="historyBody">
+
+                            <tr>
+
+                                <td colspan="8"
+                                    class="loading">
+                                    Loading data...
+                                </td>
+
+                            </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+        </section>
+
+
+        <!-- FOOTER -->
+
+        <footer>
+
+            <div>
+
+                <strong>GreenPulse AI</strong>
+
+                <span>
+                    AI/ML-Based Green Energy Management System
+                </span>
+
+            </div>
+
+            <div>
+                ESP32 • PHP • PostgreSQL • Supabase • AI/ML
+            </div>
+
+        </footer>
+
+    </main>
+
+</div>
+
+
+<script src="js/dashboard.js"></script>
+
+</body>
+</html>
