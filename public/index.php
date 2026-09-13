@@ -33,7 +33,7 @@
 
 <head>
 
-```
+
 <meta charset="UTF-8">
 
 <meta
@@ -49,7 +49,7 @@
 <title>GreenPulse AI | Energy Intelligence</title>
 
 <!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
 
 <style>
 
@@ -1871,7 +1871,7 @@
     }
 
 </style>
-```
+
 
 </head>
 
@@ -1881,7 +1881,7 @@
 
 <div class="app">
 
-```
+
 <!-- =========================================================
      SIDEBAR
 ========================================================== -->
@@ -3048,7 +3048,7 @@
 
 
 </main>
-```
+
 
 </div>
 
@@ -3654,6 +3654,30 @@ function chartOptions() {
 
 }
 
+
+/* ============================================================
+   LAZY LOAD CHART.JS
+
+   Chart.js is intentionally NOT loaded in <head>. The dashboard
+   paints first, then Chart.js is downloaded in the background.
+============================================================ */
+let chartJSReady = null;
+
+function loadChartJS() {
+    if (window.Chart) return Promise.resolve();
+    if (chartJSReady) return chartJSReady;
+
+    chartJSReady = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error("Chart.js could not be loaded"));
+        document.head.appendChild(script);
+    });
+
+    return chartJSReady;
+}
 
 /* ============================================================
    CREATE SENSOR CHART
@@ -6290,327 +6314,127 @@ function refreshCharts() {
    MAIN LOAD DATA
 ============================================================ */
 
-async function loadData() {
-
+async function loadLatestFast() {
     try {
+        const latestResponse = await fetchJSON(API.latest);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Load all APIs.
-        |--------------------------------------------------------------------------
-        */
+        lastAPIOnline = true;
 
-        const [
-
-            historyResponse,
-
-            latestResponse,
-
-            summaryResponse
-
-        ] =
-            await Promise.all([
-
-                fetchJSON(
-                    API.history
-                ),
-
-                fetchJSON(
-                    API.latest
-                ),
-
-                fetchJSON(
-                    API.summary
-                )
-
-            ]);
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | API is reachable.
-        |--------------------------------------------------------------------------
-        */
-
-        lastAPIOnline =
-            true;
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Validate history.
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            !historyResponse.success
-        ) {
-
-            throw new Error(
-                "History API failed"
-            );
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | history.php may return newest first.
-        | Sort chronologically for charts.
-        |--------------------------------------------------------------------------
-        */
-
-        const rows =
-            Array.isArray(
-                historyResponse.data
-            )
-                ?
-                historyResponse.data
-                    .slice()
-                    .sort(
-                        (a,b) => {
-
-                            const ta =
-                                new Date(
-                                    a.created_at
-                                ).getTime();
-
-
-                            const tb =
-                                new Date(
-                                    b.created_at
-                                ).getTime();
-
-
-                            return ta - tb;
-
-                        }
-                    )
-                :
-                [];
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Latest record.
-        |--------------------------------------------------------------------------
-        */
-
-        const latest =
-            latestResponse &&
-            latestResponse.success
-                ?
-                latestResponse.data
-                :
-                (
-                    rows.length
-                        ?
-                        rows[
-                            rows.length - 1
-                        ]
-                        :
-                        null
-                );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Summary.
-        |--------------------------------------------------------------------------
-        */
-
-        const summary =
-            summaryResponse &&
-            summaryResponse.success
-                ?
-                summaryResponse.data
-                :
-                null;
-
-
-        lastRows =
-            rows;
-
-
-        lastLatest =
-            latest;
-
-
-        lastSummary =
-            summary;
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Update API status.
-        |--------------------------------------------------------------------------
-        */
-
-        const apiState =
-            document.getElementById(
-                "apiState"
-            );
-
-
-        apiState.textContent =
-            "API ONLINE";
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Update all dashboard sections.
-        |--------------------------------------------------------------------------
-        */
-
-        updateSensorCharts(
-            rows
-        );
-
-
-        updatePowerEnergy(
-            rows
-        );
-
+        const latest = latestResponse && latestResponse.success
+            ? latestResponse.data
+            : null;
 
         if (latest) {
-
-            updateLiveMetrics(
-                latest
-            );
-
-
-            updateAIStatus(
-                latest
-            );
-
-
-            updateMonthlyForecast(
-                safeNumber(
-                    latest.power
-                )
-            );
-
-
-            updateForecast(
-                rows
-            );
-
+            lastLatest = latest;
+            updateLiveMetrics(latest);
+            updateAIStatus(latest);
+            updateMonthlyForecast(safeNumber(latest.power));
+            updateDeviceStatus(latest);
+        } else {
+            updateDeviceStatus(lastLatest);
         }
 
+        const apiState = document.getElementById("apiState");
+        if (apiState) apiState.textContent = "API ONLINE";
 
-        updateSummary(
-            summary,
-            rows
-        );
+        return latest;
+    } catch (error) {
+        console.error("GreenPulse latest API error:", error);
+        lastAPIOnline = false;
 
+        const apiState = document.getElementById("apiState");
+        if (apiState) apiState.textContent = "API OFFLINE";
 
-        updateTelemetry(
-            rows
-        );
+        const state = document.getElementById("deviceState");
+        const dot = document.getElementById("onlineDot");
+        if (state) state.textContent = "API OFFLINE";
+        if (dot) {
+            dot.classList.remove("warning");
+            dot.classList.add("offline");
+        }
 
+        const alert = document.getElementById("alertBox");
+        const alertText = document.getElementById("alertText");
+        const alertIcon = document.getElementById("alertIcon");
+        if (alert) {
+            alert.classList.remove("medium", "fault");
+            alert.classList.add("offline");
+        }
+        if (alertIcon) alertIcon.textContent = "⚠";
+        if (alertText) {
+            alertText.textContent =
+                "Unable to retrieve live telemetry. Check Apache, PHP APIs and Supabase connection.";
+        }
 
-        /*
-        |--------------------------------------------------------------------------
-        | CRITICAL:
-        |
-        | This determines ESP32 status from the age of the latest reading.
-        | API online != ESP32 online.
-        |--------------------------------------------------------------------------
-        */
-
-        updateDeviceStatus(
-            latest
-        );
-
-
+        return null;
     }
-    catch (error) {
+}
 
-        console.error(
-            "GreenPulse API error:",
-            error
-        );
+async function loadHistoryAndSummary() {
+    try {
+        const [historyResponse, summaryResponse] = await Promise.all([
+            fetchJSON(API.history),
+            fetchJSON(API.summary)
+        ]);
 
+        if (!historyResponse || !historyResponse.success) {
+            throw new Error("History API failed");
+        }
 
-        lastAPIOnline =
-            false;
+        const rows = Array.isArray(historyResponse.data)
+            ? historyResponse.data
+                .slice()
+                .sort((a, b) => {
+                    const ta = new Date(a.created_at).getTime();
+                    const tb = new Date(b.created_at).getTime();
+                    return ta - tb;
+                })
+            : [];
 
+        const summary = summaryResponse && summaryResponse.success
+            ? summaryResponse.data
+            : null;
 
-        /*
-        |--------------------------------------------------------------------------
-        | API offline.
-        |--------------------------------------------------------------------------
-        */
+        lastRows = rows;
+        lastSummary = summary;
 
-        const apiState =
-            document.getElementById(
-                "apiState"
-            );
+        updateSensorCharts(rows);
+        updatePowerEnergy(rows);
+        updateForecast(rows);
+        updateSummary(summary, rows);
+        updateTelemetry(rows);
 
+        if (lastLatest) {
+            updateForecast(rows);
+            updateMonthlyForecast(safeNumber(lastLatest.power));
+        }
 
-        apiState.textContent =
-            "API OFFLINE";
+        return rows;
+    } catch (error) {
+        console.error("GreenPulse history/summary API error:", error);
+        return null;
+    }
+}
 
+let latestRequestInFlight = false;
+let historyRequestInFlight = false;
 
-        const state =
-            document.getElementById(
-                "deviceState"
-            );
+async function loadData(options = {}) {
+    const refreshHistory = options.refreshHistory === true;
 
-
-        const dot =
-            document.getElementById(
-                "onlineDot"
-            );
-
-
-        state.textContent =
-            "API OFFLINE";
-
-
-        dot.classList.add(
-            "offline"
-        );
-
-
-        const alert =
-            document.getElementById(
-                "alertBox"
-            );
-
-
-        const alertText =
-            document.getElementById(
-                "alertText"
-            );
-
-
-        const alertIcon =
-            document.getElementById(
-                "alertIcon"
-            );
-
-
-        alert.classList.remove(
-            "medium",
-            "fault"
-        );
-
-
-        alert.classList.add(
-            "offline"
-        );
-
-
-        alertIcon.textContent =
-            "⚠";
-
-
-        alertText.textContent =
-            "Unable to retrieve live telemetry. Check Apache, PHP APIs and Supabase connection.";
-
+    if (!latestRequestInFlight) {
+        latestRequestInFlight = true;
+        loadLatestFast().finally(() => {
+            latestRequestInFlight = false;
+        });
     }
 
+    if (refreshHistory && !historyRequestInFlight) {
+        historyRequestInFlight = true;
+        loadHistoryAndSummary().finally(() => {
+            historyRequestInFlight = false;
+        });
+    }
 }
 
 
@@ -6667,79 +6491,84 @@ function setupNavigation() {
    INITIALIZATION
 ============================================================ */
 
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
+document.addEventListener("DOMContentLoaded", () => {
+    /*
+     * FIRST PAINT:
+     * Do only cheap DOM/local-storage work here. No Chart.js, no
+     * database calls, and no heavy chart construction blocks the UI.
+     */
+    loadTheme();
+    setupNavigation();
 
+    /* Keep particles lightweight and create them after the first paint. */
+    requestAnimationFrame(() => {
         createParticles();
+    });
 
-        loadTheme();
+    /*
+     * Fetch the latest sensor record immediately. This updates the
+     * important live cards without waiting for history/summary.
+     */
+    requestAnimationFrame(() => {
+        loadData({ refreshHistory: false });
+    });
 
-        initializeCharts();
+    /*
+     * Download Chart.js after the browser has painted the dashboard.
+     * Then create charts and apply any data that has already arrived.
+     */
+    const startCharts = () => {
+        loadChartJS()
+            .then(() => {
+                initializeCharts();
 
-        setupNavigation();
-
-        loadData();
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Refresh every 3 seconds.
-        |--------------------------------------------------------------------------
-        |
-        | ESP32 does NOT need to stay connected to browser.
-        |
-        | Correct architecture:
-        |
-        | ESP32
-        |   ↓
-        | Supabase / insert API
-        |   ↓
-        | PostgreSQL
-        |   ↓
-        | latest.php / history.php / summary.php
-        |   ↓
-        | Dashboard
-        |
-        |--------------------------------------------------------------------------
-        */
-
-        setInterval(
-            loadData,
-            3000
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Also check ESP32 freshness every second.
-        |
-        | This makes the dashboard change to OFFLINE approximately
-        | when the timeout is crossed, instead of waiting for the
-        | next complete API refresh.
-        |--------------------------------------------------------------------------
-        */
-
-        setInterval(
-            () => {
-
-                if (!lastLatest) {
-
-                    return;
-
+                if (lastRows.length) {
+                    updateSensorCharts(lastRows);
+                    updatePowerEnergy(lastRows);
+                    updateForecast(lastRows);
+                    updateSummary(lastSummary, lastRows);
                 }
 
+                if (lastLatest) {
+                    updateMonthlyForecast(safeNumber(lastLatest.power));
+                }
+            })
+            .catch(error => {
+                console.error("Chart.js load error:", error);
+            });
+    };
 
-                updateDeviceStatus(
-                    lastLatest
-                );
-
-            },
-            1000
-        );
-
+    if ("requestIdleCallback" in window) {
+        requestIdleCallback(startCharts, { timeout: 1500 });
+    } else {
+        setTimeout(startCharts, 100);
     }
-);
+
+    /*
+     * History, charts data and summary are not needed for first paint.
+     * Load them shortly after the dashboard becomes visible.
+     */
+    setTimeout(() => {
+        loadData({ refreshHistory: true });
+    }, 150);
+
+    /* Latest telemetry: fast 3-second refresh. */
+    setInterval(() => {
+        loadData({ refreshHistory: false });
+    }, 3000);
+
+    /* History/summary: slower refresh avoids unnecessary database work. */
+    setInterval(() => {
+        loadData({ refreshHistory: true });
+    }, 15000);
+
+    /* ESP32 freshness check remains lightweight and runs every second. */
+    setInterval(() => {
+        if (lastLatest) {
+            updateDeviceStatus(lastLatest);
+        }
+    }, 1000);
+});
 
 </script>
 
