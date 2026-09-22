@@ -1226,31 +1226,37 @@
 
 
     /* =========================================================
-       CHART GRID
+       SENSOR CHARTS - VERTICAL LAYOUT
     ========================================================= */
 
     .chart-grid {
 
-        display: grid;
+        display: flex;
 
-        grid-template-columns:
-            repeat(3,1fr);
+        flex-direction: column;
 
-        gap: 16px;
+        gap: 18px;
+
+        width: 100%;
     }
 
 
     .chart-card {
 
-        padding: 18px;
+        width: 100%;
 
-        min-height: 310px;
+        padding: 20px;
+
+        min-height: 350px;
+
+        min-width: 0;
     }
 
 
     .chart-card.large {
 
-        grid-column: span 2;
+        width: 100%;
+
     }
 
 
@@ -1268,29 +1274,37 @@
 
         position: relative;
 
-        height: 245px;
+        width: 100%;
+
+        height: 285px;
+    }
+
+
+    .chart-container canvas {
+
+        display: block;
+
+        width: 100% !important;
+
+        height: 100% !important;
     }
 
 
     /* =========================================================
-       CURRENT GRAPH + SMALL DATA SUMMARY
+       DATA SUMMARY
     ========================================================= */
 
     .current-summary-grid {
 
-        display: grid;
+        display: block;
 
-        grid-template-columns:
-            minmax(0,2fr)
-            minmax(230px,0.75fr);
-
-        gap: 16px;
-
-        align-items: stretch;
+        width: 100%;
     }
 
 
     .current-chart-card {
+
+        width: 100%;
 
         min-width: 0;
     }
@@ -1298,9 +1312,13 @@
 
     .data-summary-side {
 
+        width: 100%;
+
         padding: 18px;
 
-        min-height: 310px;
+        min-height: auto;
+
+        margin-top: 18px;
     }
 
 
@@ -1322,361 +1340,9 @@
 
         display: grid;
 
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(4, 1fr);
 
         gap: 9px;
-    }
-
-
-    .summary-mini {
-
-        padding: 11px;
-
-        border-radius: 12px;
-
-        background:
-            rgba(255,255,255,0.025);
-
-        border:
-            1px solid var(--border);
-    }
-
-
-    .summary-mini-label {
-
-        color: var(--muted);
-
-        font-size: 9px;
-
-        text-transform: uppercase;
-
-        letter-spacing: 0.6px;
-    }
-
-
-    .summary-mini-value {
-
-        margin-top: 5px;
-
-        font-size: 15px;
-
-        font-weight: 800;
-    }
-
-
-    .summary-mini.full {
-
-        grid-column: span 2;
-    }
-
-
-    .device-last-seen {
-
-        margin-top: 13px;
-
-        padding: 11px;
-
-        border-radius: 12px;
-
-        background:
-            rgba(84,167,255,0.06);
-
-        border:
-            1px solid rgba(84,167,255,0.12);
-    }
-
-
-    .device-last-seen-title {
-
-        color: var(--muted);
-
-        font-size: 9px;
-
-        text-transform: uppercase;
-
-        letter-spacing: 0.7px;
-    }
-
-
-    .device-last-seen-value {
-
-        margin-top: 5px;
-
-        font-size: 11px;
-
-        font-weight: 700;
-    }
-
-
-    /* =========================================================
-       SUMMARY
-    ========================================================= */
-
-    .summary-grid {
-
-        display: grid;
-
-        grid-template-columns:
-            repeat(4,1fr);
-
-        gap: 15px;
-    }
-
-
-    .summary-card {
-
-        padding: 20px;
-    }
-
-
-    .summary-label {
-
-        color: var(--muted);
-
-        font-size: 11px;
-
-        text-transform: uppercase;
-
-        letter-spacing: 1px;
-    }
-
-
-    .summary-value {
-
-        margin-top: 10px;
-
-        font-size: 25px;
-
-        font-weight: 800;
-    }
-
-
-    /* =========================================================
-       FORECAST
-    ========================================================= */
-
-    .forecast-grid {
-
-        display: grid;
-
-        grid-template-columns:
-            repeat(4,1fr);
-
-        gap: 14px;
-
-        margin-bottom: 16px;
-    }
-
-
-    .forecast-card {
-
-        padding: 17px;
-    }
-
-
-    .forecast-label {
-
-        color: var(--muted);
-
-        font-size: 11px;
-
-        text-transform: uppercase;
-    }
-
-
-    .forecast-value {
-
-        font-size: 22px;
-
-        font-weight: 800;
-
-        margin-top: 8px;
-    }
-
-
-    .risk {
-
-        display: inline-flex;
-
-        padding: 6px 10px;
-
-        border-radius: 20px;
-
-        font-size: 11px;
-
-        font-weight: 700;
-
-        margin-top: 7px;
-
-        background:
-            rgba(66,232,164,0.1);
-
-        color: var(--primary);
-    }
-
-
-    .risk.medium {
-
-        background:
-            rgba(255,209,102,0.12);
-
-        color: var(--yellow);
-    }
-
-
-    .risk.high {
-
-        background:
-            rgba(255,92,112,0.12);
-
-        color: var(--red);
-    }
-
-
-    .forecast-analysis {
-
-        padding: 20px;
-
-        margin-top: 15px;
-
-        color: var(--muted);
-
-        font-size: 13px;
-
-        line-height: 1.7;
-    }
-
-
-    /* =========================================================
-       TELEMETRY
-    ========================================================= */
-
-    .table-card {
-
-        padding: 18px;
-
-        overflow: hidden;
-    }
-
-
-    .table-wrapper {
-
-        overflow-x: auto;
-    }
-
-
-    table {
-
-        width: 100%;
-
-        border-collapse: collapse;
-
-        min-width: 900px;
-    }
-
-
-    th {
-
-        text-align: left;
-
-        color: var(--muted);
-
-        font-size: 10px;
-
-        text-transform: uppercase;
-
-        letter-spacing: 1px;
-
-        padding: 13px 10px;
-
-        border-bottom:
-            1px solid var(--border);
-    }
-
-
-    td {
-
-        padding: 13px 10px;
-
-        font-size: 12px;
-
-        border-bottom:
-            1px solid var(--border);
-
-        white-space: nowrap;
-    }
-
-
-    tr:hover td {
-
-        background:
-            rgba(255,255,255,0.02);
-    }
-
-
-    .table-status {
-
-        display: inline-flex;
-
-        padding: 5px 9px;
-
-        border-radius: 20px;
-
-        font-size: 10px;
-
-        font-weight: 700;
-    }
-
-
-    .table-status.normal {
-
-        color: var(--primary);
-
-        background:
-            rgba(66,232,164,0.1);
-    }
-
-
-    .table-status.fault {
-
-        color: var(--red);
-
-        background:
-            rgba(255,92,112,0.1);
-    }
-
-
-    .table-status.idle {
-
-        color: var(--yellow);
-
-        background:
-            rgba(255,209,102,0.1);
-    }
-
-
-    /* =========================================================
-       FOOTER
-    ========================================================= */
-
-    footer {
-
-        margin-top: 35px;
-
-        padding: 20px 5px;
-
-        border-top:
-            1px solid var(--border);
-
-        color: var(--muted);
-
-        font-size: 11px;
-
-        display: flex;
-
-        justify-content: space-between;
-
-        gap: 15px;
     }
 
 
@@ -1720,8 +1386,7 @@
 
         .chart-grid {
 
-            grid-template-columns:
-                repeat(2,1fr);
+            width: 100%;
         }
 
 
@@ -1807,7 +1472,7 @@
 
         .chart-grid {
 
-            grid-template-columns: 1fr;
+            width: 100%;
         }
 
 
@@ -1819,6 +1484,27 @@
 
 
     @media(max-width:550px) {
+
+        .chart-card {
+
+            min-height: 300px;
+
+            padding: 15px;
+        }
+
+
+        .chart-container {
+
+            height: 235px;
+        }
+
+
+        .summary-mini-grid {
+
+            grid-template-columns: 1fr 1fr;
+        }
+
+
 
         .topbar {
 
@@ -2476,7 +2162,9 @@
         <div class="chart-grid">
 
 
-            <!-- VOLTAGE -->
+            <!-- =================================================
+                 VOLTAGE
+            ================================================== -->
 
             <div class="card chart-card">
 
@@ -2493,137 +2181,28 @@
             </div>
 
 
-            <!-- CURRENT + SMALL DATA SUMMARY -->
+            <!-- =================================================
+                 CURRENT
+            ================================================== -->
 
-            <div class="current-summary-grid">
+            <div class="card chart-card current-chart-card">
 
-                <div class="card chart-card current-chart-card">
-
-                    <div class="chart-title">
-                        Current Trend
-                    </div>
-
-                    <div class="chart-container">
-
-                        <canvas id="currentChart"></canvas>
-
-                    </div>
-
+                <div class="chart-title">
+                    Current Trend
                 </div>
 
+                <div class="chart-container">
 
-                <div class="card data-summary-side">
-
-                    <div class="data-summary-title">
-                        Data Summary
-                    </div>
-
-
-                    <div class="summary-mini-grid">
-
-                        <div class="summary-mini">
-
-                            <div class="summary-mini-label">
-                                Records
-                            </div>
-
-                            <div
-                                class="summary-mini-value"
-                                id="miniRecords"
-                            >
-                                0
-                            </div>
-
-                        </div>
-
-
-                        <div class="summary-mini">
-
-                            <div class="summary-mini-label">
-                                Faults
-                            </div>
-
-                            <div
-                                class="summary-mini-value"
-                                id="miniFaults"
-                            >
-                                0
-                            </div>
-
-                        </div>
-
-
-                        <div class="summary-mini">
-
-                            <div class="summary-mini-label">
-                                Peak
-                            </div>
-
-                            <div
-                                class="summary-mini-value"
-                                id="miniPeak"
-                            >
-                                0 W
-                            </div>
-
-                        </div>
-
-
-                        <div class="summary-mini">
-
-                            <div class="summary-mini-label">
-                                Energy
-                            </div>
-
-                            <div
-                                class="summary-mini-value"
-                                id="miniEnergy"
-                            >
-                                0 kWh
-                            </div>
-
-                        </div>
-
-
-                        <div class="summary-mini full">
-
-                            <div class="summary-mini-label">
-                                Risk
-                            </div>
-
-                            <div
-                                class="summary-mini-value"
-                                id="miniRisk"
-                            >
-                                LOW
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="device-last-seen">
-
-                        <div class="device-last-seen-title">
-                            ESP32 Last Telemetry
-                        </div>
-
-                        <div
-                            class="device-last-seen-value"
-                            id="miniLastSeen"
-                        >
-                            --
-                        </div>
-
-                    </div>
+                    <canvas id="currentChart"></canvas>
 
                 </div>
 
             </div>
 
 
-            <!-- TEMPERATURE -->
+            <!-- =================================================
+                 TEMPERATURE
+            ================================================== -->
 
             <div class="card chart-card">
 
@@ -2638,6 +2217,119 @@
                 </div>
 
             </div>
+
+
+            <!-- =================================================
+                 DATA SUMMARY
+            ================================================== -->
+
+            <div class="card data-summary-side">
+
+                <div class="data-summary-title">
+                    Data Summary
+                </div>
+
+                <div class="summary-mini-grid">
+
+                    <div class="summary-mini">
+
+                        <div class="summary-mini-label">
+                            Records
+                        </div>
+
+                        <div
+                            class="summary-mini-value"
+                            id="miniRecords"
+                        >
+                            0
+                        </div>
+
+                    </div>
+
+
+                    <div class="summary-mini">
+
+                        <div class="summary-mini-label">
+                            Faults
+                        </div>
+
+                        <div
+                            class="summary-mini-value"
+                            id="miniFaults"
+                        >
+                            0
+                        </div>
+
+                    </div>
+
+
+                    <div class="summary-mini">
+
+                        <div class="summary-mini-label">
+                            Peak
+                        </div>
+
+                        <div
+                            class="summary-mini-value"
+                            id="miniPeak"
+                        >
+                            0 W
+                        </div>
+
+                    </div>
+
+
+                    <div class="summary-mini">
+
+                        <div class="summary-mini-label">
+                            Energy
+                        </div>
+
+                        <div
+                            class="summary-mini-value"
+                            id="miniEnergy"
+                        >
+                            0 kWh
+                        </div>
+
+                    </div>
+
+
+                    <div class="summary-mini full">
+
+                        <div class="summary-mini-label">
+                            Risk
+                        </div>
+
+                        <div
+                            class="summary-mini-value"
+                            id="miniRisk"
+                        >
+                            LOW
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="device-last-seen">
+
+                    <div class="device-last-seen-title">
+                        ESP32 Last Telemetry
+                    </div>
+
+                    <div
+                        class="device-last-seen-value"
+                        id="miniLastSeen"
+                    >
+                        --
+                    </div>
+
+                </div>
+
+            </div>
+
 
         </div>
 
@@ -3571,6 +3263,8 @@ function chartOptions() {
 
         maintainAspectRatio: false,
 
+        animation: false,
+
         interaction: {
 
             mode: "index",
@@ -3583,15 +3277,14 @@ function chartOptions() {
 
             legend: {
 
+                display: true,
+
                 labels: {
 
-                    color:
-                        chartTextColor(),
+                    color: chartTextColor(),
 
                     font: {
-
                         size: 10
-
                     }
 
                 }
@@ -3614,17 +3307,21 @@ function chartOptions() {
 
                 ticks: {
 
-                    color:
-                        chartTextColor(),
+                    color: chartTextColor(),
 
-                    maxTicksLimit: 8
+                    maxTicksLimit: 10,
+
+                    autoSkip: true,
+
+                    maxRotation: 0,
+
+                    minRotation: 0
 
                 },
 
                 grid: {
 
-                    color:
-                        chartGridColor()
+                    color: chartGridColor()
 
                 }
 
@@ -3632,17 +3329,17 @@ function chartOptions() {
 
             y: {
 
+                beginAtZero: false,
+
                 ticks: {
 
-                    color:
-                        chartTextColor()
+                    color: chartTextColor()
 
                 },
 
                 grid: {
 
-                    color:
-                        chartGridColor()
+                    color: chartGridColor()
 
                 }
 
@@ -3690,17 +3387,23 @@ function createSensorChart(
 ) {
 
     const canvas =
-        document.getElementById(
-            canvasId
-        );
+        document.getElementById(canvasId);
 
+    if (!canvas) {
+        console.error("Chart canvas not found:", canvasId);
+        return null;
+    }
 
-    if (!canvas) return null;
+    const ctx = canvas.getContext("2d");
 
+    if (!ctx) {
+        console.error("Unable to get canvas context:", canvasId);
+        return null;
+    }
 
     return new Chart(
 
-        canvas.getContext("2d"),
+        ctx,
 
         {
 
@@ -3718,21 +3421,21 @@ function createSensorChart(
 
                         data: [],
 
-                        borderColor:
-                            borderColor,
+                        borderColor: borderColor,
 
-                        backgroundColor:
-                            "rgba(66,232,164,0.08)",
+                        backgroundColor: "rgba(66,232,164,0.08)",
 
                         borderWidth: 2,
 
-                        tension: 0.35,
+                        tension: 0.30,
 
                         fill: true,
 
                         pointRadius: 2,
 
-                        pointHoverRadius: 5
+                        pointHoverRadius: 5,
+
+                        spanGaps: true
 
                     }
 
@@ -4370,99 +4073,78 @@ function updateFaultPanel(
 
 function updateSensorCharts(rows) {
 
-    if (!rows.length) return;
+    if (!Array.isArray(rows) || rows.length === 0) {
+        return;
+    }
 
+    /* Always plot telemetry from oldest to newest. */
+    const sortedRows = rows
+        .slice()
+        .filter(row => row && row.created_at)
+        .sort((a, b) => {
+            const ta = new Date(a.created_at).getTime();
+            const tb = new Date(b.created_at).getTime();
+            return ta - tb;
+        });
 
-    const labels =
-        rows.map(
-            row =>
-                formatTime(
-                    row.created_at
-                )
-        );
+    if (!sortedRows.length) {
+        return;
+    }
 
-
-    const voltage =
-        rows.map(
-            row =>
-                safeNumber(
-                    row.voltage
-                )
-        );
-
-
-    const current =
-        rows.map(
-            row =>
-                safeNumber(
-                    row.current
-                )
-        );
-
-
-    const temperature =
-        rows.map(
-            row =>
-                safeNumber(
-                    row.temperature
-                )
-        );
-
+    const labels = sortedRows.map(row =>
+        formatTime(row.created_at)
+    );
 
     /*
-    |--------------------------------------------------------------------------
-    | Voltage
-    |--------------------------------------------------------------------------
-    */
+     * Current normally comes from row.current.
+     * The extra fallbacks make the graph robust if the API names the
+     * field current_a, amps or ampere.
+     */
+    const readValue = (row, fields) => {
+
+        for (const field of fields) {
+
+            if (row[field] !== undefined && row[field] !== null && row[field] !== "") {
+
+                const value = Number(row[field]);
+
+                if (Number.isFinite(value)) {
+                    return value;
+                }
+            }
+        }
+
+        return null;
+    };
+
+    const voltage = sortedRows.map(row =>
+        readValue(row, ["voltage", "voltage_v"])
+    );
+
+    const current = sortedRows.map(row =>
+        readValue(row, ["current", "current_a", "amps", "ampere"])
+    );
+
+    const temperature = sortedRows.map(row =>
+        readValue(row, ["temperature", "temperature_c", "temp"])
+    );
 
     if (voltageChart) {
-
-        voltageChart.data.labels =
-            labels;
-
-        voltageChart.data.datasets[0].data =
-            voltage;
-
+        voltageChart.data.labels = labels;
+        voltageChart.data.datasets[0].data = voltage;
         voltageChart.update("none");
-
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Current
-    |--------------------------------------------------------------------------
-    */
 
     if (currentChart) {
-
-        currentChart.data.labels =
-            labels;
-
-        currentChart.data.datasets[0].data =
-            current;
-
+        currentChart.data.labels = labels;
+        currentChart.data.datasets[0].data = current;
         currentChart.update("none");
-
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Temperature
-    |--------------------------------------------------------------------------
-    */
-
     if (temperatureChart) {
-
-        temperatureChart.data.labels =
-            labels;
-
-        temperatureChart.data.datasets[0].data =
-            temperature;
-
+        temperatureChart.data.labels = labels;
+        temperatureChart.data.datasets[0].data = temperature;
         temperatureChart.update("none");
-
     }
 
 }
