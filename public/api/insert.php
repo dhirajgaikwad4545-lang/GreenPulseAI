@@ -15,26 +15,61 @@ $EXPECTED_API_KEY =
 
 
 /* ============================================================
-   SYSTEM THRESHOLDS
+   VOLTAGE / SYSTEM THRESHOLDS
    ============================================================ */
 
 /*
-   Designed for your approximately 18V nominal
-   solar panel system.
+   GreenPulse Solar System
 
-   0 - 2V       = IDLE
-   2 - 15V      = UNDERVOLTAGE
-   15 - 42V     = NORMAL
-   > 42V        = OVERVOLTAGE
+   Voltage range:
+
+   < 2.0 V
+       IDLE
+       LOW_GENERATION
+
+   2.0 V to 9.99 V
+       FAULT
+       UNDERVOLTAGE
+
+   10.0 V to 42.0 V
+       NORMAL
+       NOMINAL
+
+   > 42.0 V
+       FAULT
+       OVERVOLTAGE
 */
+
 
 $IDLE_VOLTAGE = 2.0;
 
-$MIN_NORMAL_VOLTAGE = 10.0;
+
+/*
+   IMPORTANT:
+
+   Below 10V = UNDERVOLTAGE
+*/
+
+$UNDERVOLTAGE_LIMIT = 10.0;
+
+
+/*
+   Above 42V = OVERVOLTAGE
+*/
 
 $MAX_VOLTAGE = 42.0;
 
+
+/*
+   Current limit
+*/
+
 $MAX_CURRENT = 2.8;
+
+
+/*
+   Temperature limit
+*/
 
 $MAX_TEMPERATURE = 60.0;
 
@@ -53,6 +88,7 @@ $input = json_decode($raw, true);
 */
 
 if (!is_array($input)) {
+
     $input = $_POST;
 }
 
@@ -61,18 +97,26 @@ if (!is_array($input)) {
    API KEY CHECK
    ============================================================ */
 
-$apiKey = trim(
-    $input["api_key"] ?? ""
-);
+$apiKey =
+    trim(
+        $input["api_key"] ?? ""
+    );
 
 
-if ($apiKey !== $EXPECTED_API_KEY) {
+if (
+    $apiKey !==
+    $EXPECTED_API_KEY
+) {
 
     http_response_code(401);
 
     echo json_encode([
+
         "success" => false,
-        "message" => "Invalid API key"
+
+        "message" =>
+            "Invalid API key"
+
     ]);
 
     exit;
@@ -106,16 +150,24 @@ $temperature =
    ============================================================ */
 
 if (
+
     $voltage === null ||
+
     $current === null ||
+
     $temperature === null
+
 ) {
 
     http_response_code(400);
 
     echo json_encode([
+
         "success" => false,
-        "message" => "Sensor values required"
+
+        "message" =>
+            "Sensor values required"
+
     ]);
 
     exit;
@@ -127,16 +179,24 @@ if (
    ============================================================ */
 
 if (
+
     !is_finite($voltage) ||
+
     !is_finite($current) ||
+
     !is_finite($temperature)
+
 ) {
 
     http_response_code(400);
 
     echo json_encode([
+
         "success" => false,
-        "message" => "Invalid sensor values"
+
+        "message" =>
+            "Invalid sensor values"
+
     ]);
 
     exit;
@@ -144,15 +204,21 @@ if (
 
 
 /* ============================================================
-   PREVENT NEGATIVE READINGS
+   PREVENT NEGATIVE VALUES
    ============================================================ */
 
-if ($voltage < 0) {
+if (
+    $voltage < 0
+) {
+
     $voltage = 0;
 }
 
 
-if ($current < 0) {
+if (
+    $current < 0
+) {
+
     $current = 0;
 }
 
@@ -162,18 +228,24 @@ if ($current < 0) {
    ============================================================ */
 
 $power =
-    $voltage * $current;
+    $voltage *
+    $current;
 
 
 /* ============================================================
    DEFAULT VALUES
    ============================================================ */
 
-$status = "NORMAL";
+$status =
+    "NORMAL";
 
-$fault = "NOMINAL";
 
-$confidence = 95.0;
+$fault =
+    "NOMINAL";
+
+
+$confidence =
+    95.0;
 
 
 /* ============================================================
@@ -186,19 +258,23 @@ $confidence = 95.0;
    1. IDLE
    ------------------------------------------------------------
 
-   Panel voltage below 2V means essentially
-   no solar generation.
+   Below 2V means almost no solar generation.
 */
 
 if (
     $voltage < $IDLE_VOLTAGE
 ) {
 
-    $status = "IDLE";
+    $status =
+        "IDLE";
 
-    $fault = "LOW_GENERATION";
 
-    $confidence = 90.0;
+    $fault =
+        "LOW_GENERATION";
+
+
+    $confidence =
+        90.0;
 }
 
 
@@ -206,17 +282,24 @@ if (
    ------------------------------------------------------------
    2. OVERVOLTAGE
    ------------------------------------------------------------
+
+   Above 42V.
 */
 
 elseif (
     $voltage > $MAX_VOLTAGE
 ) {
 
-    $status = "FAULT";
+    $status =
+        "FAULT";
 
-    $fault = "OVERVOLTAGE";
 
-    $confidence = 98.0;
+    $fault =
+        "OVERVOLTAGE";
+
+
+    $confidence =
+        98.0;
 }
 
 
@@ -224,17 +307,24 @@ elseif (
    ------------------------------------------------------------
    3. OVERCURRENT
    ------------------------------------------------------------
+
+   Above 2.8A.
 */
 
 elseif (
     $current > $MAX_CURRENT
 ) {
 
-    $status = "FAULT";
+    $status =
+        "FAULT";
 
-    $fault = "OVERCURRENT";
 
-    $confidence = 97.0;
+    $fault =
+        "OVERCURRENT";
+
+
+    $confidence =
+        97.0;
 }
 
 
@@ -242,17 +332,24 @@ elseif (
    ------------------------------------------------------------
    4. HIGH TEMPERATURE
    ------------------------------------------------------------
+
+   Above 60°C.
 */
 
 elseif (
     $temperature > $MAX_TEMPERATURE
 ) {
 
-    $status = "FAULT";
+    $status =
+        "FAULT";
 
-    $fault = "THERMAL_CRITICAL";
 
-    $confidence = 96.0;
+    $fault =
+        "THERMAL_CRITICAL";
+
+
+    $confidence =
+        96.0;
 }
 
 
@@ -261,28 +358,37 @@ elseif (
    5. UNDERVOLTAGE
    ------------------------------------------------------------
 
-   For your 18V nominal panel system:
+   IMPORTANT:
 
-       15V and above = normal
+   Any voltage from 2.0V up to 9.99V
+   is UNDERVOLTAGE.
 
-       below 15V = undervoltage
+   Examples:
 
-   This means:
+       9.9V  = UNDERVOLTAGE
+       8V    = UNDERVOLTAGE
+       5V    = UNDERVOLTAGE
+       3V    = UNDERVOLTAGE
 
-       16.6V = NORMAL
+   But:
 
-       14.9V = UNDERVOLTAGE
+       1.9V  = IDLE
 */
 
 elseif (
-    $voltage < $MIN_NORMAL_VOLTAGE
+    $voltage < $UNDERVOLTAGE_LIMIT
 ) {
 
-    $status = "FAULT";
+    $status =
+        "FAULT";
 
-    $fault = "UNDERVOLTAGE";
 
-    $confidence = 94.0;
+    $fault =
+        "UNDERVOLTAGE";
+
+
+    $confidence =
+        94.0;
 }
 
 
@@ -290,15 +396,22 @@ elseif (
    ------------------------------------------------------------
    6. NORMAL
    ------------------------------------------------------------
+
+   10V to 42V.
 */
 
 else {
 
-    $status = "NORMAL";
+    $status =
+        "NORMAL";
 
-    $fault = "NOMINAL";
 
-    $confidence = 95.0;
+    $fault =
+        "NOMINAL";
+
+
+    $confidence =
+        95.0;
 }
 
 
@@ -307,56 +420,97 @@ else {
    ============================================================ */
 
 $sql = "
+
 INSERT INTO energy_data
+
 (
+
     voltage,
+
     current,
+
     temperature,
+
     power,
+
     status,
+
     fault_type,
+
     ai_confidence
+
 )
+
 VALUES
+
 (
+
     $1,
+
     $2,
+
     $3,
+
     $4,
+
     $5,
+
     $6,
+
     $7
+
 )
+
 RETURNING id
+
 ";
 
 
-$result = pg_query_params(
-    $conn,
-    $sql,
-    [
-        $voltage,
-        $current,
-        $temperature,
-        $power,
-        $status,
-        $fault,
-        $confidence
-    ]
-);
+$result =
+    pg_query_params(
+
+        $conn,
+
+        $sql,
+
+        [
+
+            $voltage,
+
+            $current,
+
+            $temperature,
+
+            $power,
+
+            $status,
+
+            $fault,
+
+            $confidence
+
+        ]
+
+    );
 
 
 /* ============================================================
    DATABASE ERROR
    ============================================================ */
 
-if (!$result) {
+if (
+    !$result
+) {
 
     http_response_code(500);
 
     echo json_encode([
+
         "success" => false,
-        "message" => "Database insert failed"
+
+        "message" =>
+            "Database insert failed"
+
     ]);
 
     exit;
@@ -368,7 +522,9 @@ if (!$result) {
    ============================================================ */
 
 $row =
-    pg_fetch_assoc($result);
+    pg_fetch_assoc(
+        $result
+    );
 
 
 /* ============================================================
@@ -377,7 +533,8 @@ $row =
 
 echo json_encode([
 
-    "success" => true,
+    "success" =>
+        true,
 
     "message" =>
         "Data stored successfully",
@@ -386,16 +543,28 @@ echo json_encode([
         (int)$row["id"],
 
     "voltage" =>
-        round($voltage, 3),
+        round(
+            $voltage,
+            3
+        ),
 
     "current" =>
-        round($current, 3),
+        round(
+            $current,
+            3
+        ),
 
     "temperature" =>
-        round($temperature, 2),
+        round(
+            $temperature,
+            2
+        ),
 
     "power" =>
-        round($power, 3),
+        round(
+            $power,
+            3
+        ),
 
     "status" =>
         $status,
