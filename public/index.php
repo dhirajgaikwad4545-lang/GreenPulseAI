@@ -4008,15 +4008,28 @@ function initializeCharts() {
                             yAxisID: "y"
                         },
                         {
-                            label: "Forecast Energy (kWh)",
+                            label: "Previous Forecast Energy (kWh)",
                             data: [],
-                            borderColor: "#fbbf24",
-                            backgroundColor: "rgba(251,191,36,0.08)",
-                            borderWidth: 3,
-                            borderDash: [8, 5],
+                            borderColor: "#38bdf8",
+                            backgroundColor: "rgba(56,189,248,0.05)",
+                            borderWidth: 2,
+                            borderDash: [6, 4],
                             tension: 0.38,
                             pointRadius: 0,
                             pointHoverRadius: 5,
+                            fill: false,
+                            yAxisID: "y"
+                        },
+                        {
+                            label: "New Forecast Energy (kWh)",
+                            data: [],
+                            borderColor: "#fbbf24",
+                            backgroundColor: "rgba(251,191,36,0.10)",
+                            borderWidth: 3,
+                            borderDash: [10, 5],
+                            tension: 0.38,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
                             fill: false,
                             yAxisID: "y"
                         }
@@ -5837,9 +5850,20 @@ function updateForecastChart(
     rows = normalizeRows(rows);
     if (!rows.length || !forecastPowerChart) return;
 
+    /*
+     * THIS GRAPH SHOWS THREE CLEAR DATA TYPES:
+     *
+     * 1. Actual Energy          = real measured energy from ESP telemetry.
+     * 2. Previous Forecast      = one-step forecast that could have been
+     *                             calculated at each historical point.
+     * 3. New Forecast           = forecast starting NOW and continuing
+     *                             from the last actual value to Forecast END.
+     */
     const recent = rows.slice(-Math.min(rows.length, 240));
 
-    // Actual cumulative energy from the beginning of the selected range.
+    // ------------------------------------------------------------
+    // ACTUAL CUMULATIVE ENERGY
+    // ------------------------------------------------------------
     let cumulativeEnergy = 0;
     const actualEnergy = [];
 
@@ -5851,71 +5875,204 @@ function updateForecastChart(
 
             if (Number.isFinite(seconds) && seconds > 0 && seconds <= 3600) {
                 cumulativeEnergy +=
-                    ((safeNumber(recent[i - 1].power) + safeNumber(recent[i].power)) / 2) *
+                    (
+                        (safeNumber(recent[i - 1].power) +
+                         safeNumber(recent[i].power)) / 2
+                    ) *
                     seconds / 3600 / 1000;
             }
         }
+
         actualEnergy.push(round(cumulativeEnergy, 6));
     }
 
-    const lastTime = new Date(recent[recent.length - 1].created_at).getTime();
+    // ------------------------------------------------------------
+    // PREVIOUS / HISTORICAL FORECAST
+    // This gives the graph a visible forecast history instead of
+    // pretending the future forecast was already measured.
+    // ------------------------------------------------------------
+    const previousForecast = new Array(actualEnergy.length).fill(null);
+
+    for (let i = 2; i < actualEnergy.length; i++) {
+        const history = actualEnergy.slice(0, i);
+
+        if (history.length >= 2) {
+            previousForecast[i] = round(
+                Math.max(0, linearForecast(history, 1)),
+                6
+            );
+        }
+    }
+
+    // ------------------------------------------------------------
+    // FUTURE / NEW FORECAST
+    // ------------------------------------------------------------
+    const lastTime =
+        new Date(
+            recent[recent.length - 1].created_at
+        ).getTime();
+
     let stepMs = 60 * 1000;
 
     if (recent.length >= 2) {
-        const previousTime = new Date(recent[recent.length - 2].created_at).getTime();
+        const previousTime =
+            new Date(
+                recent[recent.length - 2].created_at
+            ).getTime();
+
         const delta = lastTime - previousTime;
-        if (Number.isFinite(delta) && delta > 0 && delta <= 60 * 60 * 1000) {
+
+        if (
+            Number.isFinite(delta) &&
+            delta > 0 &&
+            delta <= 60 * 60 * 1000
+        ) {
             stepMs = delta;
         }
     }
 
-    // Energy-only forecast: continue directly from the last actual energy
-    // value and project the new forecast energy toward the forecast END.
     const forecastSteps = 6;
-    const targetPower = Math.max(0, safeNumber(forecastPower));
-    const lastPower = Math.max(0, safeNumber(recent[recent.length - 1].power));
 
-    const labels = recent.map(r => formatTime(r.created_at));
-    const actualEnergyData = [...actualEnergy];
-    const forecastEnergyData = new Array(actualEnergy.length).fill(null);
+    const targetPower =
+        Math.max(
+            0,
+            safeNumber(forecastPower)
+        );
 
-    // START point = last measured energy.
-    labels.push(formatTime(new Date(lastTime + stepMs)));
+    const lastPower =
+        Math.max(
+            0,
+            safeNumber(
+                recent[recent.length - 1].power
+            )
+        );
+
+    const labels =
+        recent.map(
+            r => formatTime(r.created_at)
+        );
+
+    const actualEnergyData =
+        [...actualEnergy];
+
+    const previousForecastData =
+        [...previousForecast];
+
+    // Keep the previous forecast visible only on historical data.
+    const newForecastData =
+        new Array(
+            actualEnergy.length
+        ).fill(null);
+
+    /*
+     * IMPORTANT:
+     * The first NEW FORECAST point is exactly the last ACTUAL
+     * energy value. This makes the transition visible:
+     *
+     * ACTUAL ─────────● START ═════════════● END
+     *                  ↑
+     *             new forecast
+     */
+    labels.push(
+        formatTime(
+            new Date(
+                lastTime + stepMs
+            )
+        )
+    );
+
     actualEnergyData.push(null);
-    forecastEnergyData.push(cumulativeEnergy);
+    previousForecastData.push(null);
+    newForecastData.push(
+        round(cumulativeEnergy, 6)
+    );
 
-    let projectedEnergy = cumulativeEnergy;
+    let projectedEnergy =
+        cumulativeEnergy;
 
-    for (let step = 1; step <= forecastSteps; step++) {
-        const progress = step / forecastSteps;
-        const smoothProgress = progress * progress * (3 - 2 * progress);
+    for (
+        let step = 1;
+        step <= forecastSteps;
+        step++
+    ) {
+        const progress =
+            step / forecastSteps;
+
+        // Smooth transition from current measured power
+        // to the newly calculated forecast power.
+        const smoothProgress =
+            progress *
+            progress *
+            (3 - 2 * progress);
+
         const projectedPower =
             lastPower +
-            (targetPower - lastPower) * smoothProgress;
+            (
+                targetPower -
+                lastPower
+            ) *
+            smoothProgress;
 
-        const forecastTime = new Date(lastTime + stepMs * step);
-        labels.push(formatTime(forecastTime));
+        const forecastTime =
+            new Date(
+                lastTime +
+                stepMs * step
+            );
+
+        labels.push(
+            formatTime(
+                forecastTime
+            )
+        );
 
         actualEnergyData.push(null);
+        previousForecastData.push(null);
+
         projectedEnergy +=
-            Math.max(0, projectedPower) *
+            Math.max(
+                0,
+                projectedPower
+            ) *
             (stepMs / 3600000) /
             1000;
-        forecastEnergyData.push(round(projectedEnergy, 6));
+
+        newForecastData.push(
+            round(
+                projectedEnergy,
+                6
+            )
+        );
     }
 
-    forecastPowerChart.data.labels = labels;
-    forecastPowerChart.data.datasets[0].data = actualEnergyData;
-    forecastPowerChart.data.datasets[1].data = forecastEnergyData;
+    // ------------------------------------------------------------
+    // UPDATE THE THREE-LINE ENERGY GRAPH
+    // ------------------------------------------------------------
+    forecastPowerChart.data.labels =
+        labels;
 
-    const meta = document.getElementById("forecastChartRangeLabel");
+    forecastPowerChart.data.datasets[0].data =
+        actualEnergyData;
+
+    forecastPowerChart.data.datasets[1].data =
+        previousForecastData;
+
+    forecastPowerChart.data.datasets[2].data =
+        newForecastData;
+
+    const meta =
+        document.getElementById(
+            "forecastChartRangeLabel"
+        );
+
     if (meta) {
         meta.textContent =
             chartRangeLabel() +
-            " • Energy START → Forecast END";
+            " • Actual + Previous Forecast + New Forecast";
     }
 
-    forecastPowerChart.update("none");
+    forecastPowerChart.update(
+        "none"
+    );
 }
 
 /* ============================================================
