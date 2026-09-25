@@ -2510,8 +2510,9 @@
             </div>
             <div class="chart-range" id="chartRangeControls">
                 <button type="button" data-range="1h">1 Hour</button>
-                <button type="button" data-range="24h" class="active">24 Hours</button>
+                <button type="button" data-range="current" class="active">Current Data</button>
                 <button type="button" data-range="1d">1 Day</button>
+                <button type="button" data-range="1w">1 Week</button>
             </div>
         </div>
 
@@ -2680,7 +2681,7 @@
             </div>
             <div class="chart-meta" style="margin:-8px 0 12px;">
                 <span class="chart-live-dot"></span>
-                <span id="powerChartRangeLabel">Last 24 Hours</span>
+                <span id="powerChartRangeLabel">Current Data</span>
             </div>
 
             <div class="chart-container">
@@ -2791,11 +2792,11 @@
         <div class="card chart-card large">
 
             <div class="chart-title">
-                Actual Power + Forecast Energy • START → END
+                Energy Forecast • Actual → Forecast START → END
             </div>
             <div class="chart-meta" style="margin:-8px 0 12px;">
                 <span class="chart-live-dot"></span>
-                <span id="forecastChartRangeLabel">Actual telemetry → forecast START → END</span>
+                <span id="forecastChartRangeLabel">Actual energy → forecast START → END</span>
             </div>
 
             <div class="chart-container">
@@ -3144,18 +3145,20 @@ let lastESP32Online = false;
    CHART TIME-RANGE STATE
 ============================================================ */
 
-let activeChartRange = "24h";
+let activeChartRange = "current";
 
 const CHART_RANGES = {
     "1h": 60 * 60 * 1000,
-    "24h": 24 * 60 * 60 * 1000,
-    "1d": 24 * 60 * 60 * 1000
+    "1d": 24 * 60 * 60 * 1000,
+    "1w": 7 * 24 * 60 * 60 * 1000
 };
 
 function chartRangeLabel() {
-    return activeChartRange === "1h"
-        ? "Last 1 Hour"
-        : "Last 24 Hours";
+    if (activeChartRange === "current") return "Current Data";
+    if (activeChartRange === "1h") return "Last 1 Hour";
+    if (activeChartRange === "1d") return "Last 1 Day";
+    if (activeChartRange === "1w") return "Last 1 Week";
+    return "Current Data";
 }
 
 function filterRowsByRange(rows) {
@@ -3163,7 +3166,9 @@ function filterRowsByRange(rows) {
 
     if (!normalized.length) return [];
 
-    const rangeMs = CHART_RANGES[activeChartRange] || CHART_RANGES["24h"];
+    if (activeChartRange === "current") return normalized;
+
+    const rangeMs = CHART_RANGES[activeChartRange] || CHART_RANGES["1d"];
     const newest = new Date(normalized[normalized.length - 1].created_at).getTime();
 
     return normalized.filter(row => {
@@ -3173,7 +3178,7 @@ function filterRowsByRange(rows) {
 }
 
 function setChartRange(range) {
-    if (!CHART_RANGES[range]) return;
+    if (range !== "current" && !CHART_RANGES[range]) return;
 
     activeChartRange = range;
 
@@ -3197,7 +3202,7 @@ function setChartRange(range) {
     const forecastLabel = document.getElementById("forecastChartRangeLabel");
     if (forecastLabel) {
         forecastLabel.textContent =
-            rangeLabel + " • Actual telemetry + next-step forecast";
+            rangeLabel + " • Energy forecast START → END";
     }
 }
 
@@ -3989,14 +3994,13 @@ function initializeCharts() {
 
                 data: {
                     labels: [],
-
                     datasets: [
                         {
-                            label: "Actual Power (W)",
+                            label: "Actual Energy (kWh)",
                             data: [],
-                            borderColor: "#38bdf8",
-                            backgroundColor: "rgba(56,189,248,0.10)",
-                            borderWidth: 2.5,
+                            borderColor: "#a78bfa",
+                            backgroundColor: "rgba(167,139,250,0.12)",
+                            borderWidth: 3,
                             tension: 0.38,
                             pointRadius: 0,
                             pointHoverRadius: 5,
@@ -4004,52 +4008,30 @@ function initializeCharts() {
                             yAxisID: "y"
                         },
                         {
-                            label: "Forecast Power (W)",
+                            label: "Forecast Energy (kWh)",
                             data: [],
-                            borderColor: "#22c55e",
-                            borderWidth: 2.5,
-                            borderDash: [7, 5],
+                            borderColor: "#fbbf24",
+                            backgroundColor: "rgba(251,191,36,0.08)",
+                            borderWidth: 3,
+                            borderDash: [8, 5],
                             tension: 0.38,
                             pointRadius: 0,
                             pointHoverRadius: 5,
                             fill: false,
                             yAxisID: "y"
-                        },
-                        {
-                            label: "Actual Energy (kWh)",
-                            data: [],
-                            borderColor: "#a78bfa",
-                            borderWidth: 2,
-                            tension: 0.38,
-                            pointRadius: 0,
-                            pointHoverRadius: 4,
-                            fill: false,
-                            yAxisID: "y1"
-                        },
-                        {
-                            label: "Forecast Energy (kWh)",
-                            data: [],
-                            borderColor: "#fbbf24",
-                            borderWidth: 2,
-                            borderDash: [7, 5],
-                            tension: 0.38,
-                            pointRadius: 0,
-                            pointHoverRadius: 4,
-                            fill: false,
-                            yAxisID: "y1"
                         }
                     ]
                 },
 
                 options: {
                     ...chartOptions(),
-
+                    interaction: { mode: "index", intersect: false },
                     scales: {
                         x: {
                             border: { display: false },
                             ticks: {
                                 color: chartTextColor(),
-                                maxTicksLimit: 10,
+                                maxTicksLimit: 12,
                                 maxRotation: 0,
                                 autoSkip: true,
                                 font: { size: 10 }
@@ -4059,29 +4041,7 @@ function initializeCharts() {
                                 drawTicks: false
                             }
                         },
-
                         y: {
-                            position: "left",
-                            border: { display: false },
-                            title: {
-                                display: true,
-                                text: "Power (W)",
-                                color: chartTextColor(),
-                                font: { size: 10, weight: "700" }
-                            },
-                            ticks: {
-                                color: chartTextColor(),
-                                padding: 8,
-                                font: { size: 10 }
-                            },
-                            grid: {
-                                color: chartGridColor(),
-                                drawTicks: false
-                            }
-                        },
-
-                        y1: {
-                            position: "right",
                             border: { display: false },
                             title: {
                                 display: true,
@@ -4095,14 +4055,14 @@ function initializeCharts() {
                                 font: { size: 10 }
                             },
                             grid: {
-                                drawOnChartArea: false
+                                color: chartGridColor(),
+                                drawTicks: false
                             }
                         }
                     }
                 }
             }
         );
-
 
     /* =========================================================
        MONTHLY FORECAST
@@ -5879,10 +5839,7 @@ function updateForecastChart(
 
     const recent = rows.slice(-Math.min(rows.length, 240));
 
-    const actualLabels = recent.map(r => formatTime(r.created_at));
-    const actualPower = recent.map(r => safeNumber(r.power));
-
-    // Calculate cumulative measured energy.
+    // Actual cumulative energy from the beginning of the selected range.
     let cumulativeEnergy = 0;
     const actualEnergy = [];
 
@@ -5902,8 +5859,8 @@ function updateForecastChart(
     }
 
     const lastTime = new Date(recent[recent.length - 1].created_at).getTime();
-
     let stepMs = 60 * 1000;
+
     if (recent.length >= 2) {
         const previousTime = new Date(recent[recent.length - 2].created_at).getTime();
         const delta = lastTime - previousTime;
@@ -5912,24 +5869,19 @@ function updateForecastChart(
         }
     }
 
-    // Show a continuous forecast from the forecast START to the forecast END.
-    // The first forecast point is anchored to the last measured value.
+    // Energy-only forecast: continue directly from the last actual energy
+    // value and project the new forecast energy toward the forecast END.
     const forecastSteps = 6;
-    const lastActualPower = safeNumber(recent[recent.length - 1].power);
     const targetPower = Math.max(0, safeNumber(forecastPower));
+    const lastPower = Math.max(0, safeNumber(recent[recent.length - 1].power));
 
-    const labels = [...actualLabels];
-    const actualPowerData = [...actualPower];
-    const forecastPowerData = new Array(actualPower.length).fill(null);
-
+    const labels = recent.map(r => formatTime(r.created_at));
     const actualEnergyData = [...actualEnergy];
     const forecastEnergyData = new Array(actualEnergy.length).fill(null);
 
-    // Connect actual → forecast at the exact starting point.
+    // START point = last measured energy.
     labels.push(formatTime(new Date(lastTime + stepMs)));
-    actualPowerData.push(null);
-    forecastPowerData.push(lastActualPower);
-    actualEnergyData.push(cumulativeEnergy);
+    actualEnergyData.push(null);
     forecastEnergyData.push(cumulativeEnergy);
 
     let projectedEnergy = cumulativeEnergy;
@@ -5938,41 +5890,33 @@ function updateForecastChart(
         const progress = step / forecastSteps;
         const smoothProgress = progress * progress * (3 - 2 * progress);
         const projectedPower =
-            lastActualPower +
-            (targetPower - lastActualPower) * smoothProgress;
+            lastPower +
+            (targetPower - lastPower) * smoothProgress;
 
         const forecastTime = new Date(lastTime + stepMs * step);
         labels.push(formatTime(forecastTime));
 
-        actualPowerData.push(null);
-        forecastPowerData.push(Math.max(0, projectedPower));
-
-        projectedEnergy += Math.max(0, projectedPower) * (stepMs / 3600000) / 1000;
-
         actualEnergyData.push(null);
+        projectedEnergy +=
+            Math.max(0, projectedPower) *
+            (stepMs / 3600000) /
+            1000;
         forecastEnergyData.push(round(projectedEnergy, 6));
     }
 
-    // Make the forecast energy visibly continuous from START to END.
-    // The first forecast-energy point is the last measured cumulative energy.
     forecastPowerChart.data.labels = labels;
-    forecastPowerChart.data.datasets[0].data = actualPowerData;
-    forecastPowerChart.data.datasets[1].data = forecastPowerData;
-    forecastPowerChart.data.datasets[2].data = actualEnergyData;
-    forecastPowerChart.data.datasets[3].data = forecastEnergyData;
+    forecastPowerChart.data.datasets[0].data = actualEnergyData;
+    forecastPowerChart.data.datasets[1].data = forecastEnergyData;
 
-    // Update chart subtitle dynamically.
     const meta = document.getElementById("forecastChartRangeLabel");
     if (meta) {
         meta.textContent =
-            "Forecast START → END • " +
-            forecastSteps +
-            " projected intervals";
+            chartRangeLabel() +
+            " • Energy START → Forecast END";
     }
 
     forecastPowerChart.update("none");
 }
-
 
 /* ============================================================
    MONTHLY FORECAST
@@ -6282,7 +6226,7 @@ async function loadHistoryAndSummary() {
         const forecastLabel = document.getElementById("forecastChartRangeLabel");
         if (forecastLabel) {
             forecastLabel.textContent =
-                rangeLabel + " • Actual telemetry + next-step forecast";
+                rangeLabel + " • Energy forecast START → END";
         }
         updateSummary(summary, rows);
         updateTelemetry(rows);
