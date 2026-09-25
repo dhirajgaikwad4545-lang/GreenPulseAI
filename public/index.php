@@ -1374,6 +1374,33 @@
         height: 100% !important;
     }
 
+
+    /* =========================================================
+       HIGH-QUALITY CHART PRESENTATION
+    ========================================================= */
+    .chart-card {
+        padding: 20px;
+        background:
+            linear-gradient(145deg, var(--card), var(--card2));
+    }
+
+    .chart-title {
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.2px;
+    }
+
+    .chart-container {
+        min-height: 285px;
+        background: rgba(0,0,0,0.06);
+        border: 1px solid var(--border);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+
+    .forecast-analysis {
+        border-left: 3px solid var(--primary);
+    }
+
     /* Current graph and summary are stacked, never side-by-side. */
     .current-summary-grid {
         display: flex;
@@ -1955,7 +1982,7 @@
 
             <span class="nav-icon">▥</span>
 
-            Monthly Forecast
+            Monthly Energy Forecast
 
         </a>
 
@@ -2764,11 +2791,11 @@
         <div class="card chart-card large">
 
             <div class="chart-title">
-                Actual Power + Forecast Energy
+                Actual Power + Forecast Energy • START → END
             </div>
             <div class="chart-meta" style="margin:-8px 0 12px;">
                 <span class="chart-live-dot"></span>
-                <span id="forecastChartRangeLabel">Actual telemetry with next-step forecast</span>
+                <span id="forecastChartRangeLabel">Actual telemetry → forecast START → END</span>
             </div>
 
             <div class="chart-container">
@@ -2819,7 +2846,7 @@
         <div class="card chart-card large">
 
             <div class="chart-title">
-                Monthly Forecast
+                Monthly Energy Forecast
             </div>
 
             <div class="chart-container">
@@ -3674,35 +3701,76 @@ function createSensorChart(
     label,
     borderColor
 ) {
-
     const canvas = document.getElementById(canvasId);
     if (!canvas) return null;
 
-    return new Chart(
-        canvas.getContext("2d"),
-        {
-            type: "line",
+    const ctx = canvas.getContext("2d");
+    const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+    gradient.addColorStop(0, borderColor + "35");
+    gradient.addColorStop(0.55, borderColor + "12");
+    gradient.addColorStop(1, borderColor + "00");
 
-            data: {
-                labels: [],
-
-                datasets: [{
-                    label,
-                    data: [],
-                    borderColor,
-                    backgroundColor: "rgba(66,232,164,0.08)",
-                    borderWidth: 2.5,
-                    tension: 0.38,
-                    fill: true,
-                    pointRadius: 0,
-                    pointHoverRadius: 5,
-                    pointHitRadius: 12
-                }]
+    return new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label,
+                data: [],
+                borderColor,
+                backgroundColor: gradient,
+                borderWidth: 3,
+                tension: 0.32,
+                fill: true,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                pointHoverBorderWidth: 3,
+                pointHitRadius: 18
+            }]
+        },
+        options: {
+            ...chartOptions(),
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+                ...chartOptions().plugins,
+                legend: {
+                    display: true,
+                    labels: {
+                        color: chartTextColor(),
+                        usePointStyle: true,
+                        pointStyle: "line",
+                        boxWidth: 30,
+                        padding: 18,
+                        font: { size: 11, weight: "700" }
+                    }
+                },
+                tooltip: {
+                    ...chartOptions().plugins.tooltip,
+                    displayColors: true,
+                    padding: 12,
+                    titleFont: { size: 11, weight: "700" },
+                    bodyFont: { size: 11 }
+                }
             },
-
-            options: chartOptions()
+            scales: {
+                x: {
+                    ...chartOptions().scales.x,
+                    ticks: {
+                        ...chartOptions().scales.x.ticks,
+                        maxTicksLimit: 10
+                    }
+                },
+                y: {
+                    ...chartOptions().scales.y,
+                    beginAtZero: false,
+                    ticks: {
+                        ...chartOptions().scales.y.ticks,
+                        padding: 8
+                    }
+                }
+            }
         }
-    );
+    });
 }
 
 
@@ -3716,7 +3784,7 @@ function initializeCharts() {
         createSensorChart(
             "voltageChart",
             "Voltage (V)",
-            "#54a7ff"
+            "#38bdf8"
         );
 
 
@@ -3724,7 +3792,7 @@ function initializeCharts() {
         createSensorChart(
             "currentChart",
             "Current (A)",
-            "#42e8a4"
+            "#22c55e"
         );
 
 
@@ -3732,7 +3800,7 @@ function initializeCharts() {
         createSensorChart(
             "temperatureChart",
             "Temperature (°C)",
-            "#ff9f43"
+            "#f59e0b"
         );
 
 
@@ -3767,10 +3835,10 @@ function initializeCharts() {
                             data: [],
 
                             borderColor:
-                                "#42e8a4",
+                                "#22c55e",
 
                             backgroundColor:
-                                "rgba(66,232,164,0.08)",
+                                "rgba(34,197,94,0.10)",
 
                             borderWidth: 2,
 
@@ -3791,10 +3859,10 @@ function initializeCharts() {
                             data: [],
 
                             borderColor:
-                                "#9b7cff",
+                                "#a78bfa",
 
                             backgroundColor:
-                                "rgba(155,124,255,0.05)",
+                                "rgba(167,139,250,0.06)",
 
                             borderWidth: 2,
 
@@ -3926,8 +3994,8 @@ function initializeCharts() {
                         {
                             label: "Actual Power (W)",
                             data: [],
-                            borderColor: "#54a7ff",
-                            backgroundColor: "rgba(84,167,255,0.08)",
+                            borderColor: "#38bdf8",
+                            backgroundColor: "rgba(56,189,248,0.10)",
                             borderWidth: 2.5,
                             tension: 0.38,
                             pointRadius: 0,
@@ -3938,7 +4006,7 @@ function initializeCharts() {
                         {
                             label: "Forecast Power (W)",
                             data: [],
-                            borderColor: "#42e8a4",
+                            borderColor: "#22c55e",
                             borderWidth: 2.5,
                             borderDash: [7, 5],
                             tension: 0.38,
@@ -3950,7 +4018,7 @@ function initializeCharts() {
                         {
                             label: "Actual Energy (kWh)",
                             data: [],
-                            borderColor: "#9b7cff",
+                            borderColor: "#a78bfa",
                             borderWidth: 2,
                             tension: 0.38,
                             pointRadius: 0,
@@ -3961,7 +4029,7 @@ function initializeCharts() {
                         {
                             label: "Forecast Energy (kWh)",
                             data: [],
-                            borderColor: "#ffd166",
+                            borderColor: "#fbbf24",
                             borderWidth: 2,
                             borderDash: [7, 5],
                             tension: 0.38,
@@ -4082,10 +4150,10 @@ function initializeCharts() {
                             data: [],
 
                             backgroundColor:
-                                "rgba(66,232,164,0.45)",
+                                "rgba(34,197,94,0.55)",
 
                             borderColor:
-                                "#42e8a4",
+                                "#22c55e",
 
                             borderWidth: 1,
 
@@ -4097,11 +4165,47 @@ function initializeCharts() {
 
                 },
 
-                options:
-                    chartOptions()
-
+                options: {
+                    ...chartOptions(),
+                    interaction: { mode: "index", intersect: false },
+                    plugins: {
+                        ...chartOptions().plugins,
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: chartTextColor(),
+                                usePointStyle: true,
+                                pointStyle: "rectRounded",
+                                padding: 18,
+                                font: { size: 11, weight: "700" }
+                            }
+                        },
+                        tooltip: {
+                            ...chartOptions().plugins.tooltip,
+                            padding: 12,
+                            displayColors: true
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ...chartOptions().scales.x,
+                            ticks: {
+                                ...chartOptions().scales.x.ticks,
+                                maxRotation: 0,
+                                autoSkip: false
+                            }
+                        },
+                        y: {
+                            ...chartOptions().scales.y,
+                            beginAtZero: true,
+                            ticks: {
+                                ...chartOptions().scales.y.ticks,
+                                padding: 8
+                            }
+                        }
+                    }
+                }
             }
-
         );
 
 }
@@ -5770,21 +5874,19 @@ function updateForecastChart(
     rows,
     forecastPower
 ) {
-
     rows = normalizeRows(rows);
     if (!rows.length || !forecastPowerChart) return;
 
     const recent = rows.slice(-Math.min(rows.length, 240));
 
-    const labels = recent.map(r => formatTime(r.created_at));
+    const actualLabels = recent.map(r => formatTime(r.created_at));
     const actualPower = recent.map(r => safeNumber(r.power));
 
-    /* Calculate cumulative measured energy for the displayed range. */
+    // Calculate cumulative measured energy.
     let cumulativeEnergy = 0;
     const actualEnergy = [];
 
     for (let i = 0; i < recent.length; i++) {
-
         if (i > 0) {
             const t1 = new Date(recent[i - 1].created_at).getTime();
             const t2 = new Date(recent[i].created_at).getTime();
@@ -5796,47 +5898,77 @@ function updateForecastChart(
                     seconds / 3600 / 1000;
             }
         }
-
         actualEnergy.push(round(cumulativeEnergy, 6));
     }
 
-    const forecastPowerData = new Array(actualPower.length).fill(null);
-    const forecastEnergyData = new Array(actualPower.length).fill(null);
+    const lastTime = new Date(recent[recent.length - 1].created_at).getTime();
 
-    const lastTime =
-        new Date(recent[recent.length - 1].created_at).getTime();
-
-    let forecastStepHours = 1 / 60; // default one minute
+    let stepMs = 60 * 1000;
     if (recent.length >= 2) {
-        const prevTime =
-            new Date(recent[recent.length - 2].created_at).getTime();
-
-        const deltaHours =
-            (lastTime - prevTime) / 3600000;
-
-        if (Number.isFinite(deltaHours) && deltaHours > 0 && deltaHours <= 1) {
-            forecastStepHours = deltaHours;
+        const previousTime = new Date(recent[recent.length - 2].created_at).getTime();
+        const delta = lastTime - previousTime;
+        if (Number.isFinite(delta) && delta > 0 && delta <= 60 * 60 * 1000) {
+            stepMs = delta;
         }
     }
 
-    const projectedEnergy =
-        cumulativeEnergy +
-        Math.max(0, safeNumber(forecastPower)) *
-        forecastStepHours /
-        1000;
+    // Show a continuous forecast from the forecast START to the forecast END.
+    // The first forecast point is anchored to the last measured value.
+    const forecastSteps = 6;
+    const lastActualPower = safeNumber(recent[recent.length - 1].power);
+    const targetPower = Math.max(0, safeNumber(forecastPower));
 
-    labels.push("Forecast");
-    actualPower.push(null);
-    forecastPowerData.push(Math.max(0, safeNumber(forecastPower)));
+    const labels = [...actualLabels];
+    const actualPowerData = [...actualPower];
+    const forecastPowerData = new Array(actualPower.length).fill(null);
 
-    actualEnergy.push(cumulativeEnergy);
-    forecastEnergyData.push(round(projectedEnergy, 6));
+    const actualEnergyData = [...actualEnergy];
+    const forecastEnergyData = new Array(actualEnergy.length).fill(null);
 
+    // Connect actual → forecast at the exact starting point.
+    labels.push(formatTime(new Date(lastTime + stepMs)));
+    actualPowerData.push(null);
+    forecastPowerData.push(lastActualPower);
+    actualEnergyData.push(cumulativeEnergy);
+    forecastEnergyData.push(cumulativeEnergy);
+
+    let projectedEnergy = cumulativeEnergy;
+
+    for (let step = 1; step <= forecastSteps; step++) {
+        const progress = step / forecastSteps;
+        const smoothProgress = progress * progress * (3 - 2 * progress);
+        const projectedPower =
+            lastActualPower +
+            (targetPower - lastActualPower) * smoothProgress;
+
+        const forecastTime = new Date(lastTime + stepMs * step);
+        labels.push(formatTime(forecastTime));
+
+        actualPowerData.push(null);
+        forecastPowerData.push(Math.max(0, projectedPower));
+
+        projectedEnergy += Math.max(0, projectedPower) * (stepMs / 3600000) / 1000;
+
+        actualEnergyData.push(null);
+        forecastEnergyData.push(round(projectedEnergy, 6));
+    }
+
+    // Make the forecast energy visibly continuous from START to END.
+    // The first forecast-energy point is the last measured cumulative energy.
     forecastPowerChart.data.labels = labels;
-    forecastPowerChart.data.datasets[0].data = actualPower;
+    forecastPowerChart.data.datasets[0].data = actualPowerData;
     forecastPowerChart.data.datasets[1].data = forecastPowerData;
-    forecastPowerChart.data.datasets[2].data = actualEnergy;
+    forecastPowerChart.data.datasets[2].data = actualEnergyData;
     forecastPowerChart.data.datasets[3].data = forecastEnergyData;
+
+    // Update chart subtitle dynamically.
+    const meta = document.getElementById("forecastChartRangeLabel");
+    if (meta) {
+        meta.textContent =
+            "Forecast START → END • " +
+            forecastSteps +
+            " projected intervals";
+    }
 
     forecastPowerChart.update("none");
 }
