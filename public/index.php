@@ -1258,6 +1258,110 @@
         margin-bottom: 15px;
     }
 
+    /* =========================================================
+       PROFESSIONAL CHART TOOLBAR
+    ========================================================= */
+    .chart-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 0 0 14px;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: rgba(255,255,255,0.025);
+    }
+
+    .chart-toolbar-label {
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 1.1px;
+        text-transform: uppercase;
+    }
+
+    .chart-range {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px;
+        border: 1px solid var(--border);
+        border-radius: 11px;
+        background: rgba(0,0,0,0.12);
+    }
+
+    .chart-range button {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        padding: 7px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 750;
+        transition: .2s ease;
+    }
+
+    .chart-range button:hover {
+        color: var(--text);
+        background: rgba(255,255,255,0.06);
+    }
+
+    .chart-range button.active {
+        color: #06101b;
+        background: linear-gradient(135deg, var(--primary), var(--blue));
+        box-shadow: 0 5px 18px rgba(66,232,164,0.18);
+    }
+
+    .chart-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 10px;
+    }
+
+    .chart-live-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--primary);
+        box-shadow: 0 0 10px var(--primary);
+    }
+
+    .chart-card {
+        transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+    }
+
+    .chart-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(66,232,164,0.18);
+        box-shadow: 0 24px 65px rgba(0,0,0,0.30);
+    }
+
+    .chart-container {
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    @media(max-width:550px) {
+        .chart-toolbar {
+            align-items: flex-start;
+        }
+
+        .chart-range {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .chart-range button {
+            flex: 1;
+            padding: 7px 6px;
+        }
+    }
+
     .chart-container {
         position: relative;
         width: 100%;
@@ -2372,6 +2476,17 @@
             Real-time telemetry received from the ESP32 and stored in Supabase PostgreSQL.
         </div>
 
+        <div class="chart-toolbar">
+            <div class="chart-meta">
+                <span class="chart-live-dot"></span>
+                <span class="chart-toolbar-label">Telemetry Time Range</span>
+            </div>
+            <div class="chart-range" id="chartRangeControls">
+                <button type="button" data-range="1h">1 Hour</button>
+                <button type="button" data-range="24h" class="active">24 Hours</button>
+                <button type="button" data-range="1d">1 Day</button>
+            </div>
+        </div>
 
         <div class="chart-grid">
 
@@ -2536,6 +2651,10 @@
             <div class="chart-title">
                 Power Output & Cumulative Energy
             </div>
+            <div class="chart-meta" style="margin:-8px 0 12px;">
+                <span class="chart-live-dot"></span>
+                <span id="powerChartRangeLabel">Last 24 Hours</span>
+            </div>
 
             <div class="chart-container">
 
@@ -2645,7 +2764,11 @@
         <div class="card chart-card large">
 
             <div class="chart-title">
-                Actual Power vs Forecast Power
+                Actual Power + Forecast Energy
+            </div>
+            <div class="chart-meta" style="margin:-8px 0 12px;">
+                <span class="chart-live-dot"></span>
+                <span id="forecastChartRangeLabel">Actual telemetry with next-step forecast</span>
             </div>
 
             <div class="chart-container">
@@ -2856,7 +2979,7 @@
 
 const API = {
 
-    history: "api/history.php?limit=40",
+    history: "api/history.php?limit=20000",
 
     latest: "api/latest.php",
 
@@ -2989,6 +3112,68 @@ let lastLatest = null;
 let lastSummary = null;
 
 let lastESP32Online = false;
+
+/* ============================================================
+   CHART TIME-RANGE STATE
+============================================================ */
+
+let activeChartRange = "24h";
+
+const CHART_RANGES = {
+    "1h": 60 * 60 * 1000,
+    "24h": 24 * 60 * 60 * 1000,
+    "1d": 24 * 60 * 60 * 1000
+};
+
+function chartRangeLabel() {
+    return activeChartRange === "1h"
+        ? "Last 1 Hour"
+        : "Last 24 Hours";
+}
+
+function filterRowsByRange(rows) {
+    const normalized = normalizeRows(rows);
+
+    if (!normalized.length) return [];
+
+    const rangeMs = CHART_RANGES[activeChartRange] || CHART_RANGES["24h"];
+    const newest = new Date(normalized[normalized.length - 1].created_at).getTime();
+
+    return normalized.filter(row => {
+        const timestamp = new Date(row.created_at).getTime();
+        return Number.isFinite(timestamp) && (newest - timestamp) <= rangeMs;
+    });
+}
+
+function setChartRange(range) {
+    if (!CHART_RANGES[range]) return;
+
+    activeChartRange = range;
+
+    document.querySelectorAll("#chartRangeControls button").forEach(button => {
+        button.classList.toggle(
+            "active",
+            button.dataset.range === range
+        );
+    });
+
+    const filtered = filterRowsByRange(lastRows);
+
+    updateSensorCharts(filtered);
+    updatePowerEnergy(filtered);
+    updateForecast(filtered);
+
+    const rangeLabel = chartRangeLabel();
+    const powerLabel = document.getElementById("powerChartRangeLabel");
+    if (powerLabel) powerLabel.textContent = rangeLabel;
+
+    const forecastLabel = document.getElementById("forecastChartRangeLabel");
+    if (forecastLabel) {
+        forecastLabel.textContent =
+            rangeLabel + " • Actual telemetry + next-step forecast";
+    }
+}
+
 
 let lastAPIOnline = false;
 
@@ -3359,90 +3544,100 @@ function chartOptions() {
     return {
 
         responsive: true,
-
         maintainAspectRatio: false,
 
+        animation: {
+            duration: 550,
+            easing: "easeOutQuart"
+        },
+
         interaction: {
-
             mode: "index",
-
             intersect: false
+        },
 
+        elements: {
+            line: {
+                borderWidth: 2.5,
+                tension: 0.38
+            },
+            point: {
+                radius: 0,
+                hoverRadius: 5,
+                hitRadius: 10
+            }
         },
 
         plugins: {
 
             legend: {
-
+                position: "top",
+                align: "end",
                 labels: {
-
-                    color:
-                        chartTextColor(),
-
+                    color: chartTextColor(),
+                    usePointStyle: true,
+                    pointStyle: "circle",
+                    padding: 16,
                     font: {
-
-                        size: 10
-
+                        size: 10,
+                        weight: "600"
                     }
-
                 }
-
             },
 
             tooltip: {
-
                 mode: "index",
-
-                intersect: false
-
+                intersect: false,
+                displayColors: true,
+                backgroundColor: "rgba(5,13,24,0.94)",
+                titleColor: "#ffffff",
+                bodyColor: "#dbe7f5",
+                borderColor: "rgba(255,255,255,0.10)",
+                borderWidth: 1,
+                padding: 11,
+                cornerRadius: 10
             }
-
         },
 
         scales: {
 
             x: {
-
-                ticks: {
-
-                    color:
-                        chartTextColor(),
-
-                    maxTicksLimit: 8
-
+                border: {
+                    display: false
                 },
-
+                ticks: {
+                    color: chartTextColor(),
+                    maxTicksLimit: 10,
+                    maxRotation: 0,
+                    autoSkip: true,
+                    font: {
+                        size: 10
+                    }
+                },
                 grid: {
-
-                    color:
-                        chartGridColor()
-
+                    color: chartGridColor(),
+                    drawTicks: false
                 }
-
             },
 
             y: {
-
-                ticks: {
-
-                    color:
-                        chartTextColor()
-
+                border: {
+                    display: false
                 },
-
+                ticks: {
+                    color: chartTextColor(),
+                    padding: 8,
+                    font: {
+                        size: 10
+                    }
+                },
                 grid: {
-
-                    color:
-                        chartGridColor()
-
+                    color: chartGridColor(),
+                    drawTicks: false
                 }
-
             }
-
         }
-
     };
-
 }
 
 
@@ -3480,63 +3675,34 @@ function createSensorChart(
     borderColor
 ) {
 
-    const canvas =
-        document.getElementById(
-            canvasId
-        );
-
-
+    const canvas = document.getElementById(canvasId);
     if (!canvas) return null;
 
-
     return new Chart(
-
         canvas.getContext("2d"),
-
         {
-
             type: "line",
 
             data: {
-
                 labels: [],
 
-                datasets: [
-
-                    {
-
-                        label: label,
-
-                        data: [],
-
-                        borderColor:
-                            borderColor,
-
-                        backgroundColor:
-                            "rgba(66,232,164,0.08)",
-
-                        borderWidth: 2,
-
-                        tension: 0.35,
-
-                        fill: true,
-
-                        pointRadius: 2,
-
-                        pointHoverRadius: 5
-
-                    }
-
-                ]
-
+                datasets: [{
+                    label,
+                    data: [],
+                    borderColor,
+                    backgroundColor: "rgba(66,232,164,0.08)",
+                    borderWidth: 2.5,
+                    tension: 0.38,
+                    fill: true,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHitRadius: 12
+                }]
             },
 
             options: chartOptions()
-
         }
-
     );
-
 }
 
 
@@ -3747,71 +3913,126 @@ function initializeCharts() {
 
     forecastPowerChart =
         new Chart(
-
             document
-                .getElementById(
-                    "forecastPowerChart"
-                )
+                .getElementById("forecastPowerChart")
                 .getContext("2d"),
-
             {
-
                 type: "line",
 
                 data: {
-
                     labels: [],
 
                     datasets: [
-
                         {
-
-                            label:
-                                "Actual Power",
-
+                            label: "Actual Power (W)",
                             data: [],
-
-                            borderColor:
-                                "#54a7ff",
-
-                            borderWidth: 2,
-
-                            tension: 0.35,
-
-                            pointRadius: 2
-
+                            borderColor: "#54a7ff",
+                            backgroundColor: "rgba(84,167,255,0.08)",
+                            borderWidth: 2.5,
+                            tension: 0.38,
+                            pointRadius: 0,
+                            pointHoverRadius: 5,
+                            fill: true,
+                            yAxisID: "y"
                         },
-
                         {
-
-                            label:
-                                "Forecast Power",
-
+                            label: "Forecast Power (W)",
                             data: [],
-
-                            borderColor:
-                                "#42e8a4",
-
+                            borderColor: "#42e8a4",
+                            borderWidth: 2.5,
+                            borderDash: [7, 5],
+                            tension: 0.38,
+                            pointRadius: 0,
+                            pointHoverRadius: 5,
+                            fill: false,
+                            yAxisID: "y"
+                        },
+                        {
+                            label: "Actual Energy (kWh)",
+                            data: [],
+                            borderColor: "#9b7cff",
                             borderWidth: 2,
-
-                            borderDash:
-                                [6,5],
-
-                            tension: 0.35,
-
-                            pointRadius: 2
-
+                            tension: 0.38,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            fill: false,
+                            yAxisID: "y1"
+                        },
+                        {
+                            label: "Forecast Energy (kWh)",
+                            data: [],
+                            borderColor: "#ffd166",
+                            borderWidth: 2,
+                            borderDash: [7, 5],
+                            tension: 0.38,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            fill: false,
+                            yAxisID: "y1"
                         }
-
                     ]
-
                 },
 
-                options:
-                    chartOptions()
+                options: {
+                    ...chartOptions(),
 
+                    scales: {
+                        x: {
+                            border: { display: false },
+                            ticks: {
+                                color: chartTextColor(),
+                                maxTicksLimit: 10,
+                                maxRotation: 0,
+                                autoSkip: true,
+                                font: { size: 10 }
+                            },
+                            grid: {
+                                color: chartGridColor(),
+                                drawTicks: false
+                            }
+                        },
+
+                        y: {
+                            position: "left",
+                            border: { display: false },
+                            title: {
+                                display: true,
+                                text: "Power (W)",
+                                color: chartTextColor(),
+                                font: { size: 10, weight: "700" }
+                            },
+                            ticks: {
+                                color: chartTextColor(),
+                                padding: 8,
+                                font: { size: 10 }
+                            },
+                            grid: {
+                                color: chartGridColor(),
+                                drawTicks: false
+                            }
+                        },
+
+                        y1: {
+                            position: "right",
+                            border: { display: false },
+                            title: {
+                                display: true,
+                                text: "Energy (kWh)",
+                                color: chartTextColor(),
+                                font: { size: 10, weight: "700" }
+                            },
+                            ticks: {
+                                color: chartTextColor(),
+                                padding: 8,
+                                font: { size: 10 }
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
             }
-
         );
 
 
@@ -4207,21 +4428,27 @@ function updateSensorCharts(rows) {
     rows = normalizeRows(rows);
     if (!rows.length) return;
 
-    const labels = rows.map(row => formatTime(row.created_at));
-    const voltage = rows.map(row => row.voltage);
-    const current = rows.map(row => row.current);
-    const temperature = rows.map(row => row.temperature);
+    const maxPoints = 360;
+    const step = Math.max(1, Math.ceil(rows.length / maxPoints));
+    const displayRows = rows.filter((_, index) => index % step === 0);
+
+    const labels = displayRows.map(row => formatTime(row.created_at));
+    const voltage = displayRows.map(row => row.voltage);
+    const current = displayRows.map(row => row.current);
+    const temperature = displayRows.map(row => row.temperature);
 
     if (voltageChart) {
         voltageChart.data.labels = labels;
         voltageChart.data.datasets[0].data = voltage;
         voltageChart.update("none");
     }
+
     if (currentChart) {
         currentChart.data.labels = labels;
         currentChart.data.datasets[0].data = current;
         currentChart.update("none");
     }
+
     if (temperatureChart) {
         temperatureChart.data.labels = labels;
         temperatureChart.data.datasets[0].data = temperature;
@@ -5544,83 +5771,74 @@ function updateForecastChart(
     forecastPower
 ) {
 
-    if (!rows.length) return;
+    rows = normalizeRows(rows);
+    if (!rows.length || !forecastPowerChart) return;
 
+    const recent = rows.slice(-Math.min(rows.length, 240));
 
-    const recent =
-        rows.slice(
-            -20
-        );
+    const labels = recent.map(r => formatTime(r.created_at));
+    const actualPower = recent.map(r => safeNumber(r.power));
 
+    /* Calculate cumulative measured energy for the displayed range. */
+    let cumulativeEnergy = 0;
+    const actualEnergy = [];
 
-    const labels =
-        recent.map(
-            r =>
-                formatTime(
-                    r.created_at
-                )
-        );
+    for (let i = 0; i < recent.length; i++) {
 
+        if (i > 0) {
+            const t1 = new Date(recent[i - 1].created_at).getTime();
+            const t2 = new Date(recent[i].created_at).getTime();
+            const seconds = (t2 - t1) / 1000;
 
-    const actual =
-        recent.map(
-            r =>
-                safeNumber(
-                    r.power
-                )
-        );
+            if (Number.isFinite(seconds) && seconds > 0 && seconds <= 3600) {
+                cumulativeEnergy +=
+                    ((safeNumber(recent[i - 1].power) + safeNumber(recent[i].power)) / 2) *
+                    seconds / 3600 / 1000;
+            }
+        }
 
-
-    const forecast =
-        new Array(
-            actual.length
-        ).fill(null);
-
-
-    if (forecast.length) {
-
-        forecast[
-            forecast.length - 1
-        ] =
-            forecastPower;
-
+        actualEnergy.push(round(cumulativeEnergy, 6));
     }
 
+    const forecastPowerData = new Array(actualPower.length).fill(null);
+    const forecastEnergyData = new Array(actualPower.length).fill(null);
 
-    labels.push(
-        "Next"
-    );
+    const lastTime =
+        new Date(recent[recent.length - 1].created_at).getTime();
 
+    let forecastStepHours = 1 / 60; // default one minute
+    if (recent.length >= 2) {
+        const prevTime =
+            new Date(recent[recent.length - 2].created_at).getTime();
 
-    actual.push(
-        null
-    );
+        const deltaHours =
+            (lastTime - prevTime) / 3600000;
 
+        if (Number.isFinite(deltaHours) && deltaHours > 0 && deltaHours <= 1) {
+            forecastStepHours = deltaHours;
+        }
+    }
 
-    forecast.push(
-        forecastPower
-    );
+    const projectedEnergy =
+        cumulativeEnergy +
+        Math.max(0, safeNumber(forecastPower)) *
+        forecastStepHours /
+        1000;
 
+    labels.push("Forecast");
+    actualPower.push(null);
+    forecastPowerData.push(Math.max(0, safeNumber(forecastPower)));
 
-    if (!forecastPowerChart) return;
+    actualEnergy.push(cumulativeEnergy);
+    forecastEnergyData.push(round(projectedEnergy, 6));
 
+    forecastPowerChart.data.labels = labels;
+    forecastPowerChart.data.datasets[0].data = actualPower;
+    forecastPowerChart.data.datasets[1].data = forecastPowerData;
+    forecastPowerChart.data.datasets[2].data = actualEnergy;
+    forecastPowerChart.data.datasets[3].data = forecastEnergyData;
 
-    forecastPowerChart.data.labels =
-        labels;
-
-
-    forecastPowerChart.data.datasets[0].data =
-        actual;
-
-
-    forecastPowerChart.data.datasets[1].data =
-        forecast;
-
-
-    forecastPowerChart.update(
-        "none"
-    );
-
+    forecastPowerChart.update("none");
 }
 
 
@@ -5811,18 +6029,20 @@ function refreshCharts() {
 
     if (lastRows.length) {
 
+        const chartRows = filterRowsByRange(lastRows);
+
         updateSensorCharts(
-            lastRows
+            chartRows
         );
 
 
         updatePowerEnergy(
-            lastRows
+            chartRows
         );
 
 
         updateForecast(
-            lastRows
+            chartRows
         );
 
 
@@ -5917,9 +6137,21 @@ async function loadHistoryAndSummary() {
         lastRows = rows;
         lastSummary = summary;
 
-        updateSensorCharts(rows);
-        updatePowerEnergy(rows);
-        updateForecast(rows);
+        const chartRows = filterRowsByRange(rows);
+
+        updateSensorCharts(chartRows);
+        updatePowerEnergy(chartRows);
+        updateForecast(chartRows);
+
+        const rangeLabel = chartRangeLabel();
+        const powerLabel = document.getElementById("powerChartRangeLabel");
+        if (powerLabel) powerLabel.textContent = rangeLabel;
+
+        const forecastLabel = document.getElementById("forecastChartRangeLabel");
+        if (forecastLabel) {
+            forecastLabel.textContent =
+                rangeLabel + " • Actual telemetry + next-step forecast";
+        }
         updateSummary(summary, rows);
         updateTelemetry(rows);
 
@@ -5959,6 +6191,19 @@ async function loadData(options = {}) {
 /* ============================================================
    NAVIGATION
 ============================================================ */
+
+function setupChartRangeControls() {
+
+    document.querySelectorAll("#chartRangeControls button").forEach(button => {
+
+        button.addEventListener("click", () => {
+            setChartRange(button.dataset.range);
+        });
+
+    });
+
+}
+
 
 function setupNavigation() {
 
@@ -6010,6 +6255,8 @@ function setupNavigation() {
 ============================================================ */
 
 document.addEventListener("DOMContentLoaded", () => {
+    setupChartRangeControls();
+
     /*
      * FIRST PAINT:
      * Do only cheap DOM/local-storage work here. No Chart.js, no
