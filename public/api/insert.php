@@ -1,25 +1,70 @@
+```php
 <?php
 
 header("Content-Type: application/json");
 
 require_once "../config/db.php";
 
+
+/* ============================================================
+   API KEY
+   ============================================================ */
+
 $EXPECTED_API_KEY =
     getenv("GREENPULSE_API_KEY") ?: "SMART_ENERGY_2026";
 
 
-/* Read JSON */
+/* ============================================================
+   SYSTEM THRESHOLDS
+   ============================================================ */
+
+/*
+   Designed for your approximately 18V nominal
+   solar panel system.
+
+   0 - 2V       = IDLE
+   2 - 15V      = UNDERVOLTAGE
+   15 - 42V     = NORMAL
+   > 42V        = OVERVOLTAGE
+*/
+
+$IDLE_VOLTAGE = 2.0;
+
+$MIN_NORMAL_VOLTAGE = 15.0;
+
+$MAX_VOLTAGE = 42.0;
+
+$MAX_CURRENT = 2.8;
+
+$MAX_TEMPERATURE = 60.0;
+
+
+/* ============================================================
+   READ JSON
+   ============================================================ */
+
 $raw = file_get_contents("php://input");
 
 $input = json_decode($raw, true);
+
+
+/*
+   If JSON is invalid, try normal POST.
+*/
 
 if (!is_array($input)) {
     $input = $_POST;
 }
 
 
-/* Check API key */
-$apiKey = trim($input["api_key"] ?? "");
+/* ============================================================
+   API KEY CHECK
+   ============================================================ */
+
+$apiKey = trim(
+    $input["api_key"] ?? ""
+);
+
 
 if ($apiKey !== $EXPECTED_API_KEY) {
 
@@ -34,16 +79,21 @@ if ($apiKey !== $EXPECTED_API_KEY) {
 }
 
 
-/* Read sensor values */
+/* ============================================================
+   READ SENSOR VALUES
+   ============================================================ */
+
 $voltage =
     isset($input["voltage"])
     ? (float)$input["voltage"]
     : null;
 
+
 $current =
     isset($input["current"])
     ? (float)$input["current"]
     : null;
+
 
 $temperature =
     isset($input["temperature"])
@@ -51,7 +101,10 @@ $temperature =
     : null;
 
 
-/* Check values */
+/* ============================================================
+   CHECK REQUIRED VALUES
+   ============================================================ */
+
 if (
     $voltage === null ||
     $current === null ||
@@ -69,7 +122,10 @@ if (
 }
 
 
-/* Validate numbers */
+/* ============================================================
+   VALIDATE NUMBERS
+   ============================================================ */
+
 if (
     !is_finite($voltage) ||
     !is_finite($current) ||
@@ -87,71 +143,168 @@ if (
 }
 
 
-/* Prevent negative readings */
+/* ============================================================
+   PREVENT NEGATIVE READINGS
+   ============================================================ */
+
 if ($voltage < 0) {
     $voltage = 0;
 }
+
 
 if ($current < 0) {
     $current = 0;
 }
 
 
-/* Calculate power */
-$power = $voltage * $current;
+/* ============================================================
+   CALCULATE POWER
+   ============================================================ */
+
+$power =
+    $voltage * $current;
 
 
-/* Fault detection */
+/* ============================================================
+   DEFAULT VALUES
+   ============================================================ */
 
 $status = "NORMAL";
+
 $fault = "NOMINAL";
+
 $confidence = 95.0;
 
 
-if ($voltage > 42.0) {
+/* ============================================================
+   STATUS + FAULT LOGIC
+   ============================================================ */
 
-    $status = "FAULT";
-    $fault = "OVERVOLTAGE";
-    $confidence = 98.0;
 
-}
+/*
+   ------------------------------------------------------------
+   1. IDLE
+   ------------------------------------------------------------
 
-elseif ($current > 2.8) {
+   Panel voltage below 2V means essentially
+   no solar generation.
+*/
 
-    $status = "FAULT";
-    $fault = "OVERCURRENT";
-    $confidence = 97.0;
-
-}
-
-elseif ($temperature > 60.0) {
-
-    $status = "FAULT";
-    $fault = "THERMAL CRITICAL";
-    $confidence = 96.0;
-
-}
-
-elseif ($voltage < 2.0) {
+if (
+    $voltage < $IDLE_VOLTAGE
+) {
 
     $status = "IDLE";
-    $fault = "LOW GENERATION";
-    $confidence = 90.0;
 
+    $fault = "LOW_GENERATION";
+
+    $confidence = 90.0;
 }
 
+
+/*
+   ------------------------------------------------------------
+   2. OVERVOLTAGE
+   ------------------------------------------------------------
+*/
+
 elseif (
-    $voltage < 10.0 &&
-    $current > 0.1
+    $voltage > $MAX_VOLTAGE
 ) {
 
     $status = "FAULT";
-    $fault = "UNDERVOLTAGE / SHADING";
+
+    $fault = "OVERVOLTAGE";
+
+    $confidence = 98.0;
+}
+
+
+/*
+   ------------------------------------------------------------
+   3. OVERCURRENT
+   ------------------------------------------------------------
+*/
+
+elseif (
+    $current > $MAX_CURRENT
+) {
+
+    $status = "FAULT";
+
+    $fault = "OVERCURRENT";
+
+    $confidence = 97.0;
+}
+
+
+/*
+   ------------------------------------------------------------
+   4. HIGH TEMPERATURE
+   ------------------------------------------------------------
+*/
+
+elseif (
+    $temperature > $MAX_TEMPERATURE
+) {
+
+    $status = "FAULT";
+
+    $fault = "THERMAL_CRITICAL";
+
+    $confidence = 96.0;
+}
+
+
+/*
+   ------------------------------------------------------------
+   5. UNDERVOLTAGE
+   ------------------------------------------------------------
+
+   For your 18V nominal panel system:
+
+       15V and above = normal
+
+       below 15V = undervoltage
+
+   This means:
+
+       16.6V = NORMAL
+
+       14.9V = UNDERVOLTAGE
+*/
+
+elseif (
+    $voltage < $MIN_NORMAL_VOLTAGE
+) {
+
+    $status = "FAULT";
+
+    $fault = "UNDERVOLTAGE";
+
     $confidence = 94.0;
 }
 
 
-/* Insert into PostgreSQL */
+/*
+   ------------------------------------------------------------
+   6. NORMAL
+   ------------------------------------------------------------
+*/
+
+else {
+
+    $status = "NORMAL";
+
+    $fault = "NOMINAL";
+
+    $confidence = 95.0;
+}
+
+
+/* ============================================================
+   INSERT INTO POSTGRESQL
+   ============================================================ */
 
 $sql = "
 INSERT INTO energy_data
@@ -193,7 +346,10 @@ $result = pg_query_params(
 );
 
 
-/* Database error */
+/* ============================================================
+   DATABASE ERROR
+   ============================================================ */
+
 if (!$result) {
 
     http_response_code(500);
@@ -207,32 +363,48 @@ if (!$result) {
 }
 
 
-/* Get inserted ID */
-$row = pg_fetch_assoc($result);
+/* ============================================================
+   GET INSERTED ID
+   ============================================================ */
+
+$row =
+    pg_fetch_assoc($result);
 
 
-/* Success response */
+/* ============================================================
+   SUCCESS RESPONSE
+   ============================================================ */
+
 echo json_encode([
 
     "success" => true,
 
-    "message" => "Data stored successfully",
+    "message" =>
+        "Data stored successfully",
 
-    "id" => (int)$row["id"],
+    "id" =>
+        (int)$row["id"],
 
-    "voltage" => round($voltage, 3),
+    "voltage" =>
+        round($voltage, 3),
 
-    "current" => round($current, 3),
+    "current" =>
+        round($current, 3),
 
-    "temperature" => round($temperature, 2),
+    "temperature" =>
+        round($temperature, 2),
 
-    "power" => round($power, 3),
+    "power" =>
+        round($power, 3),
 
-    "status" => $status,
+    "status" =>
+        $status,
 
-    "fault" => $fault,
+    "fault" =>
+        $fault,
 
-    "ai_confidence" => $confidence
+    "ai_confidence" =>
+        $confidence
 
 ]);
 
